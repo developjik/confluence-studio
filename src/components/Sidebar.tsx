@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Briefcase, FileText, LayoutGrid, Plus, RefreshCw, Settings as SettingsIcon } from "lucide-react";
+import { Bot, Briefcase, ChevronDown, ChevronRight, FilePlus2, FileText, LayoutGrid, Plus, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import type { PageTreeNode, SpaceSummary } from "../types";
 import { ErrorBanner, Loading } from "./common";
 import { PageTree } from "./PageTree";
@@ -124,15 +124,49 @@ export function Sidebar(props: SidebarProps) {
           {treeLoading ? (
             <Loading label="트리 불러오는 중…" />
           ) : tree ? (
-            <PageTree
-              node={tree}
-              depth={0}
-              selectedId={selectedPageId}
-              expanded={expanded}
-              onToggle={toggle}
-              onSelect={onSelectPage}
-              onAddChild={onNewPage}
-            />
+            <>
+              {/* 루트는 스페이스를 나타내는 가상 노드다 — 클릭해 get_page 하면 404가 나므로 선택 불가로 렌더링. */}
+              <div className="tree-row space-root" style={{ paddingLeft: 4 }}>
+                <button
+                  className="tree-chevron"
+                  onClick={() => toggle(tree.id)}
+                  aria-label={expanded.has(tree.id) ? "접기" : "펼치기"}
+                >
+                  {tree.children.length > 0 ? (
+                    expanded.has(tree.id) ? (
+                      <ChevronDown size={13} />
+                    ) : (
+                      <ChevronRight size={13} />
+                    )
+                  ) : (
+                    <span className="tree-dot" />
+                  )}
+                </button>
+                <span className="tree-label space-root-label" title={currentSpace?.name ?? "스페이스"}>
+                  {currentSpace?.name ?? "스페이스"}
+                </span>
+                <button
+                  className="icon-btn tree-add"
+                  onClick={() => onNewPage(null)}
+                  aria-label="최상위 페이지 추가"
+                  title="최상위 페이지 추가"
+                >
+                  <FilePlus2 size={12} />
+                </button>
+              </div>
+              {tree.children.map((child) => (
+                <PageTree
+                  key={child.id}
+                  node={child}
+                  depth={0}
+                  selectedId={selectedPageId}
+                  expanded={expanded}
+                  onToggle={toggle}
+                  onSelect={onSelectPage}
+                  onAddChild={onNewPage}
+                />
+              ))}
+            </>
           ) : !treeError ? (
             <p className="dim-note">트리를 불러오지 못했습니다.</p>
           ) : null}
