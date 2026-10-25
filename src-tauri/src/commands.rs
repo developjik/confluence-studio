@@ -920,10 +920,29 @@ pub async fn damon_create_session(
     title: Option<String>,
 ) -> Result<DamonCreateSessionDto, String> {
     let client = ensure_damon(&state).await?;
+    // 백엔드 미지정 시 데몬 기본값 대신 available한 첫 백엔드를 명시적으로 쓴다
+    // (데몬 기본 백엔드가 깨진 오버라이드를 가리킬 수 있어 방어적으로 해결).
+    let mut backend = backend;
+    if backend.is_none() {
+        match client.backend_list().await {
+            Ok(list) => {
+                if let Some(first) = list.into_iter().find(|b| b.available) {
+                    dbg_log(&format!("backend 미지정 — available 첫 백엔드 {} 사용", first.id));
+                    backend = Some(first.id);
+                }
+            }
+            Err(e) => dbg_log(&format!("backend_list 실패(무시): {e}")),
+        }
+    }
+    dbg_log(&format!("create_session backend={backend:?}"));
     let info = client
         .create_session(backend.as_deref(), None)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            dbg_log(&format!("create_session ERR {e}"));
+            e.to_string()
+        })?;
+    dbg_log(&format!("create_session OK {} {}", info.session_id, info.backend));
     // session.create has no title param in protocol v2; apply it as a rename.
     if let Some(title) = title.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
         let _ = client.rename_session(&info.session_id, title).await;
@@ -932,6 +951,18 @@ pub async fn damon_create_session(
         session_id: info.session_id,
         backend: info.backend,
     })
+}
+
+fn dbg_log(msg: &str) {
+    use std::io::Write;
+    let mut line = chrono::Local::now().format("%H:%M:%S").to_string();
+    line.push(' ');
+    line.push_str(msg);
+    line.push('\n');
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/cs-damon-debug.log") {
+        let _ = f.write_all(line.as_bytes());
+    }
+    eprintln!("[damon-dbg] {msg}");
 }
 
 #[tauri::command]
@@ -945,20 +976,29 @@ pub async fn damon_prompt(
     // Fire-and-forget per the contract: the command returns immediately and
     // the turn streams via damon://event / damon://turn-done.
     tauri::async_runtime::spawn(async move {
-        // 히스토리에서 고른 세션은 살아있는 백엔드 프로세스가 아닐 수 있다.
+        dbg_log(&format!("prompt sid={session_id} len={}", prompt.len()));
         // -32001(session not live)이면 session.resume으로 재부착 후 1회 재시도한다.
         let result = match client.turn_start(&session_id, &prompt).await {
-            Err(DamonError::SessionNotLive(_)) => {
-                eprintln!("damon 세션 미활성 — resume 후 재시도: {session_id}");
+            Err(DamonError::SessionNotLive(msg)) => {
+                dbg_log(&format!("turn_start SessionNotLive({msg}) - resume 시도"));
                 match client
                     .call("session.resume", json!({ "sessionId": session_id }))
                     .await
                 {
-                    Ok(_) => client.turn_start(&session_id, &prompt).await,
-                    Err(resume_err) => Err(resume_err),
+                    Ok(v) => {
+                        dbg_log(&format!("resume OK: {v}"));
+                        client.turn_start(&session_id, &prompt).await
+                    }
+                    Err(resume_err) => {
+                        dbg_log(&format!("resume ERR {resume_err}"));
+                        Err(resume_err)
+                    }
                 }
             }
-            other => other,
+            other => {
+                if let Err(e) = &other { dbg_log(&format!("turn_start 즉시 오류 {e}")); }
+                other
+            }
         };
         match result {
             Ok(result) => {

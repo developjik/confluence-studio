@@ -124,11 +124,16 @@ export function ChatPanel() {
             list.push({ id: uid(), role: "reasoning", text: ev.text ?? "" });
           }
         } else if (ev.kind === "assistant_message") {
+          const incoming = ev.text ?? "";
           if (lastAssistant >= 0 && list[lastAssistant].streaming) {
             const target = list[lastAssistant];
-            list[lastAssistant] = { ...target, text: target.text + (ev.text ?? ""), streaming: true };
+            // 데몬은 전체 스냅샷을 보낼 수도 있고 델타를 보낼 수도 있다:
+            // 누적본이 incoming의 접두사면 스냅샷 → 교체, 아니면 델타 → append.
+            const isSnapshot = incoming.startsWith(target.text) && target.text.length > 0;
+            const text = isSnapshot ? incoming : target.text + incoming;
+            list[lastAssistant] = { ...target, text, streaming: true };
           } else {
-            list.push({ id: uid(), role: "assistant", text: ev.text ?? "", streaming: true });
+            list.push({ id: uid(), role: "assistant", text: incoming, streaming: true });
           }
         } else {
           list.push({ id: uid(), role: "tool", text: ev.text ?? "", meta: ev.kind });
