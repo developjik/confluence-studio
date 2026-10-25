@@ -153,27 +153,29 @@ export function ChatPanel() {
 
   useEffect(() => {
     const cleanups: Array<() => void> = [];
+    let cancelled = false; // cleanup이 listen 해결 전에 실행되면(StrictMode 이중 마운트 등) 즉시 해제한다
     void (async () => {
-      cleanups.push(
-        await onEvent<DamonEventPayload>(EVENTS.damonEvent, ({ sessionId: sid, event: ev }) => {
-          applyDamonEvent(sid, ev);
-          if (ev.type === "permission_requested" && sessionIdRef.current === sid) {
-            setPermissions((prev) => [
-              ...prev.filter((p) => p.requestId !== ev.requestId),
-              { requestId: ev.requestId ?? uid(), tool: ev.tool ?? "", summary: ev.summary ?? "" },
-            ]);
-          }
-        }),
-      );
-      cleanups.push(
-        await onEvent<DamonTurnDonePayload>(EVENTS.damonTurnDone, ({ sessionId: sid, stopReason, error }) => {
-          finalizeTurn(sid, stopReason, error);
-          if (sessionIdRef.current === sid) setPermissions([]);
-          void reloadSessions();
-        }),
-      );
+      const un1 = await onEvent<DamonEventPayload>(EVENTS.damonEvent, ({ sessionId: sid, event: ev }) => {
+        applyDamonEvent(sid, ev);
+        if (ev.type === "permission_requested" && sessionIdRef.current === sid) {
+          setPermissions((prev) => [
+            ...prev.filter((p) => p.requestId !== ev.requestId),
+            { requestId: ev.requestId ?? uid(), tool: ev.tool ?? "", summary: ev.summary ?? "" },
+          ]);
+        }
+      });
+      if (cancelled) { un1(); return; }
+      cleanups.push(un1);
+      const un2 = await onEvent<DamonTurnDonePayload>(EVENTS.damonTurnDone, ({ sessionId: sid, stopReason, error }) => {
+        finalizeTurn(sid, stopReason, error);
+        if (sessionIdRef.current === sid) setPermissions([]);
+        void reloadSessions();
+      });
+      if (cancelled) { un2(); return; }
+      cleanups.push(un2);
     })();
     return () => {
+      cancelled = true;
       cleanups.forEach((fn) => fn());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
