@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 /// User-facing errors (converted to a plain string at the Tauri boundary).
 #[derive(Debug, thiserror::Error)]
 pub enum ConfluenceError {
-    #[error("인증 실패(이메일/API 토큰 확인)")]
-    Auth,
+    #[error("인증 실패({status}) — 이메일/API 토큰 확인. 서버 응답: {detail}")]
+    Auth { status: u16, detail: String },
     #[error("페이지/스페이스 없음")]
     NotFound,
     #[error("Confluence 오류 ({status}): {summary}")]
@@ -88,7 +88,7 @@ impl ConfluenceClient {
         let body = resp.text().await.unwrap_or_default();
         let summary: String = body.chars().take(300).collect();
         match status.as_u16() {
-            401 | 403 => Err(ConfluenceError::Auth),
+            401 | 403 => Err(ConfluenceError::Auth { status: status.as_u16(), detail: summary }),
             404 => Err(ConfluenceError::NotFound),
             other => Err(ConfluenceError::Api {
                 status: other,

@@ -336,8 +336,8 @@ async fn unauthorized_maps_to_auth_error_message() {
         .await
         .expect_err("401 must be an error");
     let msg = err.to_string();
-    assert!(matches!(err, ConfluenceError::Auth));
-    assert_eq!(msg, "인증 실패(이메일/API 토큰 확인)");
+    assert!(matches!(err, ConfluenceError::Auth { status: 401, .. }));
+    assert!(msg.starts_with("인증 실패(401)"), "got: {msg}");
 }
 
 #[tokio::test]
