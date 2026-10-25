@@ -2,6 +2,8 @@
 
 A native desktop workspace for Confluence Cloud: browse and edit pages in Markdown, run scheduled Markdown export jobs, and chat with an AI agent — all in one Tauri 2 app with a Rust backend.
 
+**[홈페이지 (GitHub Pages)](https://developjik.github.io/confluence-studio/)** — 제품 소개 페이지
+
 > Confluence Cloud 문서를 Markdown으로 편집·내보내고, 예약 잡으로 자동 백업하고, AI 에이전트와 대화하는 네이티브 데스크톱 앱 (Tauri 2 + Rust + React 19).
 
 ## Why
@@ -17,10 +19,6 @@ Teams keep their knowledge in Confluence but want it in plain Markdown files: po
 - **Schedules** — Daily, multiple-times-daily, weekdays, weekly or monthly, with timezone support and run history.
 - **AI chat (Damon)** — thin-client chat over the Damon daemon protocol v2 WebSocket: sessions, streaming replies, tool-permission prompts.
 - **Credentials in the OS keychain** — your API token lives in macOS Keychain / Windows Credential Manager, never in a config file.
-
-## Screenshot
-
-![Confluence Studio](docs/screenshot.png)
 
 ## Getting started
 
