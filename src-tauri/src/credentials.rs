@@ -41,10 +41,20 @@ pub fn save(base_url: &str, email: &str, token: &str) -> Result<(), CredentialEr
 
 /// Full credentials including token — in-process use only, never return to the webview.
 pub fn load_full() -> Result<ConfluenceAuth, CredentialError> {
-    let base_url = entry(ACCOUNT_BASE_URL)?.get_password().map_err(|_| CredentialError::NotConfigured)?;
-    let email = entry(ACCOUNT_EMAIL)?.get_password().map_err(|_| CredentialError::NotConfigured)?;
-    let token = entry(ACCOUNT_TOKEN)?.get_password().map_err(|_| CredentialError::NotConfigured)?;
-    Ok(ConfluenceAuth { base_url, email, token })
+    let base_url = entry(ACCOUNT_BASE_URL)?
+        .get_password()
+        .map_err(|_| CredentialError::NotConfigured)?;
+    let email = entry(ACCOUNT_EMAIL)?
+        .get_password()
+        .map_err(|_| CredentialError::NotConfigured)?;
+    let token = entry(ACCOUNT_TOKEN)?
+        .get_password()
+        .map_err(|_| CredentialError::NotConfigured)?;
+    Ok(ConfluenceAuth {
+        base_url,
+        email,
+        token,
+    })
 }
 
 /// Non-secret connection info for the UI.
