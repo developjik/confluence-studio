@@ -89,14 +89,15 @@ export function ChatPanel() {
     setPermissions([]);
   }, [sessionId]);
 
-  const finalizeTurn = useCallback((sid: string, stopReason: string) => {
+  const finalizeTurn = useCallback((sid: string, stopReason: string, error?: string) => {
     setEntriesBySession((prev) => {
       const list = (prev[sid] ?? []).map((e) => (e.streaming ? { ...e, streaming: false } : e));
       if (stopReason !== "completed") {
+        const detail = error ? (stopReason === "canceled" ? " (" + error + ")" : error) : "";
         list.push({
           id: uid(),
           role: "system",
-          text: stopReason === "canceled" ? "턴이 취소되었습니다." : "턴 종료: " + stopReason,
+          text: stopReason === "canceled" ? "턴이 취소되었습니다." + detail : "턴 종료: " + stopReason + detail,
         });
       }
       return { ...prev, [sid]: list };
@@ -160,8 +161,8 @@ export function ChatPanel() {
         }),
       );
       cleanups.push(
-        await onEvent<DamonTurnDonePayload>(EVENTS.damonTurnDone, ({ sessionId: sid, stopReason }) => {
-          finalizeTurn(sid, stopReason);
+        await onEvent<DamonTurnDonePayload>(EVENTS.damonTurnDone, ({ sessionId: sid, stopReason, error }) => {
+          finalizeTurn(sid, stopReason, error);
           if (sessionIdRef.current === sid) setPermissions([]);
           void reloadSessions();
         }),

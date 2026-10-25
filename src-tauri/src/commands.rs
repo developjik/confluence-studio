@@ -985,12 +985,19 @@ pub async fn damon_prompt(
                 // the streaming UI, so synthesize a terminal event.
                 if !matches!(err, DamonError::RequestTimeout { .. }) {
                     eprintln!("damon turn 실패: {err}");
+                    // 재개 시도 후에도 백엔드가 죽었다면 원본 대화 데이터가 유실된
+                    // 히스토리 행일 가능성이 높다 (claude: "No conversation found").
+                    let hint = match &err {
+                        DamonError::Rpc { .. } => " — 이 세션의 원본 백엔드 기록이 유실된 것 같습니다. 새 세션을 만들어주세요",
+                        _ => "",
+                    };
                     let _ = app.emit(
                         EVENT_DAMON_TURN_DONE,
                         json!({
                             "sessionId": session_id,
                             "turnId": "",
                             "stopReason": "failed",
+                            "error": format!("{err}{hint}"),
                         }),
                     );
                 }

@@ -199,6 +199,7 @@ export interface DamonTurnDonePayload {
   sessionId: string;
   turnId: string;
   stopReason: string;
+  error?: string;
 }
 
 export interface ConfluenceChangedEvent {
