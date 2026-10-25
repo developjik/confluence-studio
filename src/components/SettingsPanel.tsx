@@ -60,14 +60,22 @@ export function SettingsPanel({ onConnectionChanged }: { onConnectionChanged(): 
   }
 
   async function handleTest() {
+    if (!baseUrl.trim() || !email.trim() || !token.trim()) {
+      setError("테스트 전에 Base URL, 이메일, API 토큰을 모두 입력하세요. (입력값을 저장 후 테스트합니다)");
+      return;
+    }
     setTesting(true);
     setError(null);
     setNotice(null);
     try {
+      // 항상 화면의 입력값으로 저장한 뒤 테스트한다 (stale keychain 자격증명 방지).
+      await api.saveConnection({ baseUrl: baseUrl.trim(), email: email.trim(), token: token.trim() });
       const r = await api.testConnection();
       let msg = r.siteName ? "연결 성공: " + r.siteName : "연결 성공";
       if (r.serverTime) msg += " · 서버 시각 " + r.serverTime;
       setNotice(msg);
+      setLoaded(true);
+      onConnectionChanged();
     } catch (e) {
       setError("연결 실패: " + (e instanceof Error ? e.message : String(e)));
     } finally {
