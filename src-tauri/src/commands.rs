@@ -945,7 +945,22 @@ pub async fn damon_prompt(
     // Fire-and-forget per the contract: the command returns immediately and
     // the turn streams via damon://event / damon://turn-done.
     tauri::async_runtime::spawn(async move {
-        match client.turn_start(&session_id, &prompt).await {
+        // 히스토리에서 고른 세션은 살아있는 백엔드 프로세스가 아닐 수 있다.
+        // -32001(session not live)이면 session.resume으로 재부착 후 1회 재시도한다.
+        let result = match client.turn_start(&session_id, &prompt).await {
+            Err(DamonError::SessionNotLive(_)) => {
+                eprintln!("damon 세션 미활성 — resume 후 재시도: {session_id}");
+                match client
+                    .call("session.resume", json!({ "sessionId": session_id }))
+                    .await
+                {
+                    Ok(_) => client.turn_start(&session_id, &prompt).await,
+                    Err(resume_err) => Err(resume_err),
+                }
+            }
+            other => other,
+        };
+        match result {
             Ok(result) => {
                 // completed/failed/canceled stop reasons also arrive as push
                 // events (the pump emits turn-done); surface terminal-only
