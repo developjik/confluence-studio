@@ -277,6 +277,30 @@ pub struct SessionInfo {
     pub replayed: Option<u64>,
 }
 
+/// Accept `createdAt` as epoch millis (number) or a datetime string
+/// (real daemon v0.8.0 sends SQLite `"YYYY-MM-DD HH:MM:SS"`; ISO-8601 also accepted).
+/// Unknown formats degrade to `None` so a session list never fails to parse.
+fn deserialize_created_at<'de, D>(d: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde_json::Value;
+    let v = Option::<Value>::deserialize(d)?;
+    Ok(match v {
+        None | Some(Value::Null) => None,
+        Some(Value::Number(n)) => n.as_i64(),
+        Some(Value::String(s)) => chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+            .ok()
+            .map(|dt| dt.and_utc().timestamp_millis())
+            .or_else(|| {
+                chrono::DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.timestamp_millis())
+            }),
+        Some(_) => None,
+    })
+}
+
 /// One `session.list` row.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -287,7 +311,7 @@ pub struct SessionSummary {
     #[serde(default)]
     pub title: Option<String>,
     /// Unix milliseconds, when reported.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_created_at")]
     pub created_at: Option<i64>,
     #[serde(default)]
     pub cwd: Option<String>,
@@ -634,5 +658,32 @@ mod tests {
 
         let back = serde_json::to_value(&row).unwrap();
         assert_eq!(back["sessionId"], "s1"); // camelCase back out
+    }
+
+    #[test]
+    fn session_summary_accepts_real_daemon_created_at_string() {
+        // Real v0.8.0 daemon sends SQLite datetime strings, not epoch numbers.
+        let row: SessionSummary = serde_json::from_value(json!({
+            "sessionId": "6caf35ed-f5d5-46d1-b4f2-8fe3edbece76",
+            "createdAt": "2026-09-20 13:39:37",
+            "backend": "claude",
+            "title": "test",
+            "cwd": "/tmp",
+            "tags": [],
+            "pinned": false,
+            "archived": false
+        }))
+        .unwrap();
+        assert!(row.created_at.is_some());
+        let iso = chrono::DateTime::from_timestamp_millis(row.created_at.unwrap()).unwrap();
+        assert_eq!(iso.format("%Y-%m-%d %H:%M:%S").to_string(), "2026-09-20 13:39:37");
+
+        // ISO strings and garbage degrade gracefully (None), never fail the list.
+        let iso_row: SessionSummary =
+            serde_json::from_value(json!({ "sessionId": "s2", "createdAt": "2026-09-20T13:39:37Z" })).unwrap();
+        assert!(iso_row.created_at.is_some());
+        let junk: SessionSummary =
+            serde_json::from_value(json!({ "sessionId": "s3", "createdAt": "yesterday-ish" })).unwrap();
+        assert_eq!(junk.created_at, None);
     }
 }
