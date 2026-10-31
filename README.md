@@ -8,7 +8,7 @@ A native desktop workspace for Confluence Cloud: browse and edit pages in Markdo
 
 ## Why
 
-Teams keep their knowledge in Confluence but want it in plain Markdown files: portable, diffable, and greppable. Confluence Studio treats Confluence as the source of truth while giving you a native, keyboard-first editor, an export scheduler with the semantics of the original [confluence-export-desktop](https://github.com/) Python tool, and a built-in AI sidekick for drafting and editing pages.
+Teams keep their knowledge in Confluence but want it in plain Markdown files: portable, diffable, and greppable. Confluence Studio treats Confluence as the source of truth while giving you a native, keyboard-first editor, an export scheduler with the semantics of the original [confluence-export-desktop](https://github.com/developjik/confluence-export-desktop) Python tool, and a built-in AI sidekick for drafting and editing pages.
 
 ## Features
 
