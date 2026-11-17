@@ -1,5 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { demoApi, demoOnEvent } from "./demo";
 import { EVENTS } from "./types";
 import type {
   CancelJobRunResult,
@@ -46,7 +47,7 @@ async function cmd<T>(command: string, args?: Record<string, unknown>): Promise<
   }
 }
 
-export const api = {
+const realApi = {
   // ---------- connection ----------
   saveConnection(input: SaveConnectionInput): Promise<void> {
     return cmd("save_connection", { ...input });
@@ -145,12 +146,27 @@ export const api = {
   },
 };
 
+/** The full command surface, so the demo backend can implement the same shape. */
+export type StudioApi = typeof realApi;
+
+/**
+ * Demo mode (`pnpm dev:demo`, VITE_DEMO=1) swaps every Tauri command for the
+ * in-memory sample backend in src/demo, so the whole UI runs in a plain
+ * browser. Production builds leave VITE_DEMO undefined and use the real
+ * invoke/listen path.
+ */
+export const isDemoMode = import.meta.env.VITE_DEMO === "1";
+
+export const api: StudioApi = isDemoMode ? demoApi : realApi;
+
 /**
  * Typed event subscription. Returns an unlisten function.
  * Outside of the Tauri runtime (e.g. plain 'vite dev' in a browser) listen()
  * cannot register; we log once and return a no-op so panels keep rendering.
+ * In demo mode the local demo event bus takes over.
  */
 export async function onEvent<T>(event: string, handler: (payload: T) => void): Promise<UnlistenFn> {
+  if (isDemoMode) return demoOnEvent<T>(event, handler);
   try {
     return await listen<T>(event, (e) => handler(e.payload));
   } catch (e) {

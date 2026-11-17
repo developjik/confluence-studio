@@ -192,3 +192,4 @@ mock daemon: /ws 에서 hello push → session.create 응답 → turn.start 요�
   5. SettingsPanel: base_url/email/token 입력, 저장(save_connection), 연결 테스트(test_connection), 연결 해제(clear_connection).
 - 디자인: 다크 테마 기본, CSS 변수(src/styles.css 단일 파일, 컴포넌트별 클래스), lucide-react 아이콘. 외부 UI 라이브러리 금지(이미 설치된 것만).
 - 컴포넌트 단위는 자유롭되 위 5영역은 파일로 존재할 것(components/Sidebar.tsx, components/PageEditor.tsx, components/JobsPanel.tsx, components/ChatPanel.tsx, components/SettingsPanel.tsx).
+- **데모 모드**: `pnpm dev:demo`(= `VITE_DEMO=1`, `.env.demo`)이면 `src/api.ts`가 `src/demo`의 인메모리 백엔드로 바꾼다. `StudioApi`(= 실제 커맨드 래퍼의 타입)를 그대로 만족해야 하고, 이벤트 이름은 `EVENTS`의 export:// · damon:// · confluence:// 를 그대로 쓴다. 실제 invoke/listen 경로는 건드리지 않으며, 프로덕션 빌드에는 `.env.demo`가 없으므로 demo 분기가 선택되지 않는다. 데모 상태는 디스크·Confluence·데몬에 닿지 않고 새로고침하면 초기화된다.

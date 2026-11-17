@@ -43,9 +43,25 @@ export function ChatPanel() {
 
   const sessionIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  // Auto-scroll follows the stream only while the user is at (or near) the
+  // bottom. Scrolling up to read earlier output pins the view instead of
+  // yanking it back on every incoming token.
+  const stickToBottomRef = useRef(true);
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    stickToBottomRef.current = true;
+  }, [sessionId]);
+
+  function handleMessagesScroll() {
+    const el = messagesRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distance < 48;
+  }
 
   const entries: ChatEntry[] =
     sessionId != null ? entriesBySession[sessionId] ?? [] : [];
@@ -94,11 +110,14 @@ export function ChatPanel() {
       const list = (prev[sid] ?? []).map((e) => (e.streaming ? { ...e, streaming: false } : e));
       if (stopReason !== "completed") {
         const detail = error ? (stopReason === "canceled" ? " (" + error + ")" : error) : "";
-        list.push({
-          id: uid(),
-          role: "system",
-          text: stopReason === "canceled" ? "턴이 취소되었습니다." + detail : "턴 종료: " + stopReason + detail,
-        });
+        const text =
+          stopReason === "canceled" ? "턴이 취소되었습니다." + detail : "턴 종료: " + stopReason + detail;
+        // 취소는 로컬 정리와 turn-done 이벤트 양쪽에서 올 수 있으므로,
+        // 같은 안내 문구가 연속으로 두 번 붙지 않게 한다.
+        const last = list[list.length - 1];
+        if (!last || last.role !== "system" || last.text !== text) {
+          list.push({ id: uid(), role: "system", text });
+        }
       }
       return { ...prev, [sid]: list };
     });
@@ -182,8 +201,9 @@ export function ChatPanel() {
   }, [finalizeTurn, reloadSessions]);
 
   useEffect(() => {
+    if (!stickToBottomRef.current) return;
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [entries.length, streaming]);
+  }, [entries, streaming]);
 
   async function handleSend() {
     const sid = sessionId;
@@ -340,7 +360,7 @@ export function ChatPanel() {
           ) : null}
         </div>
 
-        <div className="messages">
+        <div className="messages" ref={messagesRef} onScroll={handleMessagesScroll}>
           {entries.length === 0 ? (
             <EmptyState
               title="메시지 없음"
