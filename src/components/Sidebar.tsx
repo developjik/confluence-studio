@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Briefcase, ChevronDown, ChevronRight, FilePlus2, FileText, LayoutGrid, Plus, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import type { PageTreeNode, SpaceSummary } from "../types";
+import { isDemoMode } from "../api";
 import { ErrorBanner, Loading } from "./common";
 import { PageTree } from "./PageTree";
 
@@ -34,7 +35,9 @@ export function Sidebar(props: SidebarProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const initForRef = useRef<string>("");
 
-  // When a different tree arrives (space switch), expand its first level once.
+  // When a different tree arrives (space switch), expand the root and its
+  // first level once. The root is expandable too, so its row can collapse the
+  // whole space (it used to toggle an icon without doing anything).
   useEffect(() => {
     if (!tree) {
       initForRef.current = "";
@@ -42,7 +45,7 @@ export function Sidebar(props: SidebarProps) {
     }
     if (initForRef.current !== tree.id) {
       initForRef.current = tree.id;
-      setExpanded(new Set(tree.children.map((c) => c.id)));
+      setExpanded(new Set([tree.id, ...tree.children.map((c) => c.id)]));
     }
   }, [tree]);
 
@@ -62,6 +65,11 @@ export function Sidebar(props: SidebarProps) {
       <div className="brand">
         <span className="brand-mark"><LayoutGrid size={15} /></span>
         <span className="brand-name">Confluence Studio</span>
+        {isDemoMode ? (
+          <span className="demo-chip" title="샘플 데이터로 동작하는 데모입니다 — 실제 Confluence에 연결되지 않습니다">
+            DEMO
+          </span>
+        ) : null}
       </div>
 
       <nav className="nav">
@@ -154,18 +162,20 @@ export function Sidebar(props: SidebarProps) {
                   <FilePlus2 size={12} />
                 </button>
               </div>
-              {tree.children.map((child) => (
-                <PageTree
-                  key={child.id}
-                  node={child}
-                  depth={0}
-                  selectedId={selectedPageId}
-                  expanded={expanded}
-                  onToggle={toggle}
-                  onSelect={onSelectPage}
-                  onAddChild={onNewPage}
-                />
-              ))}
+              {expanded.has(tree.id)
+                ? tree.children.map((child) => (
+                    <PageTree
+                      key={child.id}
+                      node={child}
+                      depth={0}
+                      selectedId={selectedPageId}
+                      expanded={expanded}
+                      onToggle={toggle}
+                      onSelect={onSelectPage}
+                      onAddChild={onNewPage}
+                    />
+                  ))
+                : null}
             </>
           ) : !treeError ? (
             <p className="dim-note">트리를 불러오지 못했습니다.</p>
