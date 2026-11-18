@@ -1,0 +1,131 @@
+# Release workflow — build Tauri 2 desktop bundles for macOS and Windows.
+#
+# The Pickle GitHub App on this account has no `workflows` permission, so this
+# file also ships under docs/ and the live copy at .github/workflows/release.yml
+# was uploaded through the GitHub web uploader. Steps: docs/release-setup.md.
+#
+# Triggers
+#   * push of a `v*` tag  → builds and creates a DRAFT GitHub Release holding the
+#     bundles. Nothing is public until the draft is published by hand.
+#   * workflow_dispatch   → builds only; bundles go to the workflow run as
+#     artifacts and no release is created. This is the safe way to try it.
+#
+# Linux is intentionally absent: `keyring` is compiled with only
+# `apple-native` / `windows-native` features in src-tauri/Cargo.toml, so the app
+# has no Linux keychain backend (see README "알려진 한계").
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# tauri-action creates/updates the release and uploads assets with this token.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  preflight:
+    name: version check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The bundle version comes from src-tauri/tauri.conf.json, not from the
+      # tag. A tag that disagrees would publish 0.1.0 files under v0.2.0.
+      - name: tag must match src-tauri/tauri.conf.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -eu
+          app="v$(node -p 'require("./src-tauri/tauri.conf.json").version')"
+          echo "tag=${GITHUB_REF_NAME} app=${app}"
+          if [ "${GITHUB_REF_NAME}" != "${app}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match tauri.conf.json version ${app} — bump src-tauri/tauri.conf.json (and package.json) before tagging"
+            exit 1
+          fi
+
+  bundle:
+    name: bundle (${{ matrix.label }})
+    needs: preflight
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-latest is arm64; it cross-builds the Intel target too.
+          - label: macos-arm64
+            platform: macos-latest
+            args: --target aarch64-apple-darwin
+          - label: macos-x64
+            platform: macos-latest
+            args: --target x86_64-apple-darwin
+          - label: windows-x64
+            platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Only macOS cross-compiles; empty on Windows.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.label }}
+
+      - name: install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tauri build runs beforeBuildCommand `pnpm build` (tsc + vite build), so
+      # dist/ exists before the Rust side embeds ../dist.
+      - name: build bundles and create draft release (tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Confluence Studio ${{ github.ref_name }}'
+          releaseBody: |
+            Confluence Studio 데스크톱 번들입니다.
+
+            - macOS: `.dmg` (Apple Silicon / Intel), Windows: `.msi` · `.exe`
+            - 빌드는 **서명·공증되지 않았습니다**. macOS에서 "확인되지 않은 개발자" 경고가 뜨면
+              Finder에서 우클릭 → 열기, 또는 `xattr -dr com.apple.quarantine "/Applications/Confluence Studio.app"`.
+            - Confluence 자격 증명은 OS 키체인(macOS Keychain / Windows 자격 증명 관리자)에만 저장됩니다.
+            - 라이브 데모: https://developjik.github.io/confluence-studio/
+          releaseDraft: true
+          prerelease: false
+          retryAttempts: 2
+
+      - name: build bundles only (manual run)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}
+          uploadWorkflowArtifacts: true
