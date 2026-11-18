@@ -1,0 +1,75 @@
+# CI workflow — copy to .github/workflows/ci.yml
+# The Pickle GitHub App on this account has no `workflows` permission, so this
+# file ships under docs/ instead. Paste it at .github/workflows/ci.yml in the
+# GitHub web editor; steps are in docs/ci-setup.md.
+
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web (tsc, vite build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: build
+        run: pnpm build
+
+      # src-tauri's lib uses tauri::generate_context!, which embeds frontendDist
+      # (../dist) at compile time — cargo test cannot build without these files.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  rust:
+    name: rust (cargo test)
+    needs: web
+    # macOS on purpose: keyring is built with apple-native/windows-native only,
+    # so the credential tests need a real OS keychain. Linux would also need the
+    # webkit2gtk/gtk dev packages just to link the tauri crate.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
