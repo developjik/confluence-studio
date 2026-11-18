@@ -14,7 +14,7 @@
 [![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 
-**[▶ 랜딩 페이지](https://developjik.github.io/confluence-studio/)** · **[아키텍처 문서](docs/ARCHITECTURE.md)** · **[스크린샷](#-스크린샷)**
+**[▶ Live Demo](https://developjik.github.io/confluence-studio/)** · **[랜딩 페이지](https://developjik.github.io/confluence-studio/landing/)** · **[아키텍처 문서](docs/ARCHITECTURE.md)** · **[스크린샷](#-스크린샷)**
 
 </div>
 
@@ -156,6 +156,14 @@ pnpm dev:demo   # → http://127.0.0.1:1420
 ```
 
 `VITE_DEMO=1`일 때 `src/api.ts`가 `src/demo`의 인메모리 백엔드로 바뀝니다. 사이드바에 `DEMO` 배지가 붙고, 어떤 요청도 디스크·Confluence·데몬에 닿지 않습니다. 스크린샷도 이 모드로 캡처했습니다.
+
+**호스팅 데모** — 설치 없이 바로: <https://developjik.github.io/confluence-studio/> (`deploy-demo` 워크플로가 같은 데모 번들을 GitHub Pages에 올립니다.) 같은 번들을 로컬에서 만들려면:
+
+```bash
+pnpm build:demo                                              # dist/ (base="/")
+VITE_BASE_PATH=/confluence-studio/ pnpm build:demo           # GitHub Pages 하위 경로용 base
+pnpm preview                                                 # 빌드 결과 미리보기
+```
 
 ## ✅ 빌드와 테스트
 

@@ -4,8 +4,14 @@ import react from "@vitejs/plugin-react";
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
+// GitHub Pages serves a project site from a sub-path, so the static demo build
+// needs `base: "/confluence-studio/"`. Everything else (Tauri, `pnpm dev`, the
+// default `pnpm build`) keeps the root base and behaves exactly as before.
+const base = process.env.VITE_BASE_PATH ?? "/";
+
 // https://vite.dev/config/
 export default defineConfig(() => ({
+  base,
   plugins: [react()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
