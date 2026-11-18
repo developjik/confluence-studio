@@ -1,8 +1,8 @@
 # CI 셋업 (1분)
 
-이 저장소에는 아직 CI가 없습니다. 워크플로는 [ci.workflow.yml](ci.workflow.yml)에 완성된 상태로 들어 있고, 아래 두 가지 방법 중 하나로 활성화하면 됩니다.
+**상태: 활성화됨 (2026-11-18).** `.github/workflows/ci.yml`이 커밋되어 `master` 푸시와 모든 PR에서 `ci` 워크플로가 돕니다. 아래는 그 파일의 원본과, 다른 저장소에 같은 셋업을 옮길 때를 위한 기록입니다.
 
-Pickle의 GitHub App에는 `workflows` 권한이 없어서 `.github/workflows/ci.yml`을 직접 푸시할 수 없습니다(푸시가 `refusing to allow a GitHub App to create or update workflow`로 거절됩니다). 그래서 파일은 `docs/`에 두고, 활성화만 직접 해 주셔야 합니다.
+워크플로 원본은 [ci.workflow.yml](ci.workflow.yml)에 같은 내용으로 들어 있습니다. Pickle의 GitHub App에는 `workflows` 권한이 없어서 `.github/workflows/ci.yml`을 직접 푸시할 수 없습니다(푸시와 Contents API 모두 `refusing to allow a GitHub App to create or update workflow` / `Resource not accessible by integration`으로 거절됩니다). 그래서 파일은 `docs/`에 두고, 활성화는 웹에서 했습니다.
 
 ## 방법 1 — 웹에서 파일 추가 (권장, 1분)
 
@@ -46,4 +46,4 @@ pnpm exec tsc --noEmit           # TypeScript 6.0.3, 오류 없음
 pnpm build                       # vite 8.3.5, dist/ 생성 (500 kB 청크 경고만)
 ```
 
-`cargo test`는 이 작업 환경에 GTK/WebKit 개발 라이브러리가 없고 crates.io 접근이 막혀 있어 로컬 검증하지 못했습니다. 워크플로가 활성화되면 첫 실행이 곧 검증이 됩니다.
+`cargo test`는 로컬에서 검증하지 못했고(개발 라이브러리 부재), 워크플로의 첫 실행이 곧 검증이었습니다 — 2026-11-18 첫 실행에서 `web`·`rust` 두 잡 모두 통과했습니다.
