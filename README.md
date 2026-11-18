@@ -167,6 +167,7 @@ cd src-tauri && cargo test # Rust 단위 34 + 통합 50 = 84개 (wiremock · axu
 - 통합 테스트는 실제 네트워크를 쓰지 않습니다: Confluence REST는 `wiremock`, Damon 데몬은 `axum` WebSocket 목이 대신합니다.
 - 실 데몬 대상 E2E는 기본적으로 꺼져 있고 `DAMON_LIVE=1`일 때만 돌습니다 (`src-tauri/tests/damon_live.rs`).
 - 프론트엔드는 별도 테스트 러너 없이 `tsc` 타입 검사와 빌드로 검증합니다.
+- 같은 검사를 CI(`ci` 워크플로)가 자동으로 돌립니다: `tsc --noEmit` + `pnpm build`(ubuntu), `cargo test`(macOS). 활성화 방법은 [docs/ci-setup.md](docs/ci-setup.md).
 
 ## 📂 프로젝트 구조
 
