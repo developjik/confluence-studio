@@ -1,0 +1,79 @@
+# Deploy-demo workflow — copy to .github/workflows/deploy-demo.yml
+# The Pickle GitHub App on this account has no `workflows` permission, so this
+# file ships under docs/ instead. Paste it at .github/workflows/deploy-demo.yml
+# in the GitHub web editor; steps are in docs/demo-setup.md.
+#
+# Builds the demo bundle (`vite build --mode demo`, VITE_DEMO=1 → src/demo
+# in-memory backend, no Tauri / Confluence / Damon) with the GitHub Pages
+# sub-path base and publishes it with GitHub Pages (source: GitHub Actions).
+# The static landing page that used to be served from docs/ is published under
+# /landing/ so the existing link keeps working.
+
+name: deploy-demo
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build demo bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: build demo (tsc + vite, base=/confluence-studio/)
+        run: pnpm build:demo
+        env:
+          VITE_BASE_PATH: /confluence-studio/
+
+      # Keep the marketing landing page reachable at /landing/ after the root
+      # starts serving the demo app.
+      - name: assemble landing page
+        run: |
+          mkdir -p dist/landing
+          cp docs/index.html dist/landing/index.html
+          cp docs/icon.png dist/landing/icon.png
+          cp -r docs/screenshots dist/landing/screenshots
+
+      - name: add .nojekyll
+        run: touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
