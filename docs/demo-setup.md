@@ -1,15 +1,20 @@
 # 라이브 데모 배포 셋업 (2분)
 
-이 저장소의 웹 데모는 완성된 상태로 `docs/deploy-demo.workflow.yml`에 들어 있습니다. Pickle의 GitHub App에는 `workflows` 권한이 없어 `.github/workflows/`에 직접 푸시할 수 없으므로, 아래 두 단계만 웹에서 해 주시면 됩니다.
+**상태: 활성화됨 (2026-11-18).** `.github/workflows/deploy-demo.yml`이 커밋되어 `master` 푸시마다 데모 번들을 GitHub Pages로 배포하고, Pages 소스는 **GitHub Actions**입니다.
 
-## 1) 워크플로 추가
+- 데모: https://developjik.github.io/confluence-studio/
+- 랜딩 페이지: https://developjik.github.io/confluence-studio/landing/
+
+아래는 그 파일의 원본과, 다른 저장소에 같은 셋업을 옮길 때를 위한 기록입니다. 워크플로 원본은 [deploy-demo.workflow.yml](deploy-demo.workflow.yml)에 같은 내용으로 들어 있습니다.
+
+## 1) 워크플로 추가 (완료 — 재현용 기록)
 
 1. https://github.com/developjik/confluence-studio/new/master 로 이동합니다.
 2. 파일 이름 칸에 `.github/workflows/deploy-demo.yml`을 입력합니다. (`/`를 치면 폴더가 만들어집니다.)
 3. [deploy-demo.workflow.yml](deploy-demo.workflow.yml)의 `name: deploy-demo`부터 끝까지 복사해 붙여넣습니다. (맨 위 `#` 주석 8줄은 빼도 됩니다.)
 4. **Commit changes**.
 
-## 2) Pages 소스를 GitHub Actions로 변경
+## 2) Pages 소스를 GitHub Actions로 변경 (완료 — 재현용 기록)
 
 **Settings → Pages → Build and deployment → Source**를 `Deploy from a branch` → **`GitHub Actions`**로 바꿉니다.
 
