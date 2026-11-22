@@ -23,7 +23,7 @@
     "@uiw/react-codemirror": "^4.23.0",
     "@codemirror/lang-markdown": "^6.3.0",
     "@codemirror/language-data": "^6.5.0",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^1.76.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
