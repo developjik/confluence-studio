@@ -37,7 +37,7 @@ jobs:
     name: version check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The bundle version comes from src-tauri/tauri.conf.json, not from the
       # tag. A tag that disagrees would publish 0.1.0 files under v0.2.0.
@@ -71,7 +71,7 @@ jobs:
             args: ''
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
