@@ -29,7 +29,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native"] }
 tokio-tungstenite = "0.30"
 quick-xml = "0.37"
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 parking_lot = "0.13"
 directories = "6"
