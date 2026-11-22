@@ -14,7 +14,19 @@
 [![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Vite](https://img.shields.io/badge/Vite_8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 
-**[▶ Live Demo](https://developjik.github.io/confluence-studio/)** · **[랜딩 페이지](https://developjik.github.io/confluence-studio/landing/)** · **[아키텍처 문서](docs/ARCHITECTURE.md)** · **[스크린샷](#-스크린샷)**
+**[▶ Live Demo](https://developjik.github.io/confluence-studio/)** · **[⬇ 다운로드 v0.1.0](https://github.com/developjik/confluence-studio/releases/tag/v0.1.0)** · **[랜딩 페이지](https://developjik.github.io/confluence-studio/landing/)** · **[아키텍처 문서](docs/ARCHITECTURE.md)** · **[스크린샷](#-스크린샷)**
+
+## ⬇ 다운로드 (v0.1.0)
+
+[최신 릴리스](https://github.com/developjik/confluence-studio/releases/latest)에서 설치 파일을 받을 수 있습니다:
+
+| OS | 파일 | 비고 |
+| :--- | :--- | :--- |
+| macOS (Apple Silicon) | `Confluence.Studio_0.1.0_aarch64.dmg` | 미서명·미공증 |
+| macOS (Intel) | `Confluence.Studio_0.1.0_x64.dmg` | 미서명·미공증 |
+| Windows (x64) | `Confluence.Studio_0.1.0_x64-setup.exe` · `.msi` | 미서명 |
+
+> **macOS Gatekeeper 안내** — 빌드가 서명·공증되지 않았으므로 첫 실행 때 "확인되지 않은 개발자" 경고가 뜹니다. Finder에서 앱 우클릭 → **열기**로 열거나, `xattr -dr com.apple.quarantine "/Applications/Confluence Studio.app"` 를 실행하세요.
 
 </div>
 
