@@ -18,6 +18,7 @@ use super::JobsResult;
 use super::fs_util;
 use super::history;
 use super::models::Job;
+use crate::confluence::convert::storage_to_markdown;
 
 /// Hidden directory inside the export target holding state and history.
 pub const STATE_DIR_NAME: &str = ".confluence-studio";
@@ -203,55 +204,6 @@ pub fn sanitize_component(value: &str) -> String {
         }
     }
     text
-}
-
-// ---------------------------------------------------------------------------
-// Minimal storage → markdown fallback
-// ---------------------------------------------------------------------------
-
-/// INTEGRATION POINT (for the integration pass): switch this function body
-/// to `crate::confluence::convert::storage_to_markdown(storage)` now that
-/// the confluence module provides it, and drop the local fallback. The
-/// fallback performs a paragraph-level strip (tags removed, block
-/// boundaries kept) so the jobs module and its tests stay independent of
-/// the confluence module while it lands (per the module contract).
-fn storage_to_markdown(storage: &str) -> String {
-    let mut stripped = String::with_capacity(storage.len());
-    let mut in_tag = false;
-    for ch in storage.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            c if !in_tag => stripped.push(c),
-            _ => {}
-        }
-    }
-    // Entity decoding: &amp; is decoded last so "&amp;lt;" ends up as the
-    // literal text "&lt;" instead of being double-decoded to "<".
-    let decoded = stripped
-        .replace("&nbsp;", " ")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&amp;", "&");
-    // Normalize whitespace: trim line ends and collapse 3+ blank lines.
-    let mut text = String::with_capacity(decoded.len());
-    let mut blank = 0;
-    for line in decoded.split('\n') {
-        let line = line.trim_end();
-        if line.is_empty() {
-            blank += 1;
-            if blank <= 1 {
-                text.push('\n');
-            }
-        } else {
-            blank = 0;
-            text.push_str(line);
-            text.push('\n');
-        }
-    }
-    text.trim().to_string()
 }
 
 fn sha256_hex(data: &[u8]) -> String {

@@ -95,7 +95,8 @@ PageTreeNode = {id, title, status, children: [PageTreeNode]}
 ### convert.rs — storage XHTML ↔ markdown
 - pub fn storage_to_markdown(storage: &str) -> String, pub fn markdown_to_storage(md: &str) -> String.
 - quick-xml 기반 파서. 지원 서브셋(양방향 최선 노력):
-  - h1-h6, p, br, strong/b, em/i, code(inline), pre(코드블록, 언어 attr), a(href), ac:link → 일반 링크 텍스트화, ul/ol/li(중첩 2뎁스), blockquote, hr, table/thead/tbody/tr/th/td(GFM 테이블), img, ac:image(attachment) → ![](filename), ac:structured-macro → blockquote로 축약(&gt; [!INFO] + 내부 텍스트).
+  - h1-h6, p, br, strong/b, em/i, code(inline), pre(코드블록, 언어 attr), a(href), ac:link → 일반 링크 텍스트화, ul/ol/li(중첩 2뎁스), blockquote, hr, table/thead/tbody/tr/th/td(GFM 테이블), img, ac:image(attachment) → ![](filename).
+  - ac:structured-macro 계약: ac:plain-text-body 보유(code·sql 등) → fenced 코드블록(language 파라미터, 없으면 매크로명), ac:rich-text-body 보유(info·note·warning·tip·panel·expand 등) → `> [!NAME]` 콜아웃 + 변환된 본문, 둘 다 없음(toc·children·status 등) → `> [!NAME]` + "변환되지 않는 Confluence 매크로" 안내 + `name: value` 파라미터 줄로 보존(조용한 유실 없음). 인라인 위치 매크로는 `[!NAME — k: v]` 마커로 표기.
   - markdown→storage: headings/paragraph/lists(중첩)/code fence(언어 있으면 pre에 data-lang)/inline(bold/italic/code/link/img)/blockquote/hr/table(GFM). 변환 불가 요소는 텍스트 보존. 완벽한 왕복은 강요하지 않지만 round-trip 시 제목/리스트/본문 텍스트는 유실되지 않아야 한다.
 - 단위 테스트: 각 요소 변환 케이스 + round-trip 텍스트 보존.
 

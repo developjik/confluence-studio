@@ -567,7 +567,7 @@ async fn jobs_export_writes_tree_numbering_front_matter_breadcrumbs() {
     assert!(home.contains("version: 7"));
     assert!(home.contains("exported_at: "));
     assert!(home.contains("> Docs\n"), "breadcrumb 경로 줄");
-    assert!(home.contains("Hello world"), "파라그래프 텍스트 보존");
+    assert!(home.contains("Hello **world**"), "storage→markdown 변환 결과가 내보내기에 반영돼야 함");
 
     assert!(root.join("Docs/Home/01 - Setup Guide.md").is_file());
     assert!(root.join("Docs/Home/02 - Advanced.md").is_file());
@@ -581,6 +581,56 @@ async fn jobs_export_writes_tree_numbering_front_matter_breadcrumbs() {
     assert_eq!(history[0].status, RunStatus::Success);
     assert_eq!(history[0].job_id, job.id);
     assert_eq!(history[0].run_id, outcome.run_id);
+}
+
+#[tokio::test]
+async fn jobs_export_renders_confluence_markup_and_marks_unsupported_macros() {
+    let tmp = TempDir::new();
+    let job = make_job(tmp.path());
+    let mut source = MockSource {
+        pages: vec![page(
+            "p1",
+            "Guide",
+            &["Docs"],
+            "<h2>Install</h2><p>First step.</p><p>Second step.</p><ul><li>alpha</li><li>beta</li></ul><p><a href=\"https://example.com\">site</a></p><ac:structured-macro ac:name=\"toc\"/>",
+        )],
+        ..MockSource::default()
+    };
+
+    let outcome = run_export(
+        &job,
+        &mut source,
+        &mut no_progress(),
+        &AtomicBool::new(false),
+    )
+    .await;
+    assert_eq!(outcome.status, RunStatus::Success);
+
+    let md = std::fs::read_to_string(tmp.path().join("Docs/01 - Guide.md")).unwrap();
+    assert!(
+        md.contains("## Install"),
+        "제목이 마크다운 헤딩으로 변환돼야 함: {md}"
+    );
+    assert!(
+        md.contains("First step.\n\nSecond step."),
+        "연속 문단의 경계가 보존돼야 함: {md}"
+    );
+    assert!(
+        md.contains("- alpha\n- beta"),
+        "목록이 보존돼야 함: {md}"
+    );
+    assert!(
+        md.contains("[site](https://example.com)"),
+        "링크 표현이 보존돼야 함: {md}"
+    );
+    assert!(
+        md.contains("> [!TOC]"),
+        "미지원 매크로 이름이 남아야 함: {md}"
+    );
+    assert!(
+        md.contains("변환되지 않는 Confluence 매크로"),
+        "미지원 매크로 안내가 있어야 함: {md}"
+    );
 }
 
 #[tokio::test]

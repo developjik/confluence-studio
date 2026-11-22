@@ -326,15 +326,76 @@ fn quote_md(inner: &str) -> String {
         .join("\n")
 }
 
+/// ac:structured-macro conversion contract:
+/// - macros with an `ac:plain-text-body` (code, sql, …) → fenced code block,
+///   honouring a `language` parameter and falling back to the macro name.
+/// - macros with an `ac:rich-text-body` (info, note, warning, tip, panel,
+///   expand, …) → `> [!NAME]` callout holding the converted body.
+/// - macros with neither (toc, children, status, …) → `> [!NAME]` callout with
+///   an unsupported-macro notice and `name: value` parameter lines, so nothing
+///   is silently dropped from the export.
 fn macro_md(attrs: &[(String, String)], children: &[Node]) -> String {
-    let name = attr(attrs, "ac:name").unwrap_or("macro").to_uppercase();
-    let body = blocks_from_nodes(children).join("\n\n");
-    let mut out = format!("> [!{}]", name);
-    if !body.is_empty() {
-        out.push('\n');
-        out.push_str(&quote_md(&body));
+    let name = attr(attrs, "ac:name").unwrap_or("macro");
+
+    if let Some(body) = macro_body(children, "ac:plain-text-body") {
+        let params = macro_parameters(children);
+        let lang = params
+            .iter()
+            .find(|(key, _)| key == "language")
+            .map(|(_, value)| value.clone())
+            .unwrap_or_else(|| name.to_string());
+        let content = raw_text(body).trim_end_matches('\n').to_string();
+        let fence = "`".repeat(std::cmp::max(3, longest_backtick_run(&content) + 1));
+        return format!("{}{}\n{}\n{}", fence, lang, content, fence);
+    }
+
+    if let Some(body) = macro_body(children, "ac:rich-text-body") {
+        let body_md = blocks_from_nodes(body).join("\n\n");
+        let mut out = format!("> [!{}]", name.to_uppercase());
+        if !body_md.is_empty() {
+            out.push('\n');
+            out.push_str(&quote_md(&body_md));
+        }
+        return out;
+    }
+
+    let mut out = format!(
+        "> [!{}]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*",
+        name.to_uppercase()
+    );
+    for (key, value) in macro_parameters(children) {
+        out.push_str(&format!("\n> {}: {}", escape_md(&key), escape_md(&value)));
     }
     out
+}
+
+/// Children of the first body element of the given kind inside a macro.
+fn macro_body<'a>(children: &'a [Node], body_name: &str) -> Option<&'a [Node]> {
+    children.iter().find_map(|n| match n {
+        Node::Elem { name, children, .. } if name == body_name => Some(children.as_slice()),
+        _ => None,
+    })
+}
+
+/// `(name, text)` pairs of a macro's `ac:parameter` children.
+fn macro_parameters(children: &[Node]) -> Vec<(String, String)> {
+    children
+        .iter()
+        .filter_map(|n| match n {
+            Node::Elem {
+                name,
+                attrs,
+                children,
+            } if name == "ac:parameter" => {
+                let key = attr(attrs, "ac:name").unwrap_or_default().to_string();
+                if key.is_empty() {
+                    return None;
+                }
+                Some((key, raw_text(children).trim().to_string()))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 fn list_md(children: &[Node], ordered: bool, depth: usize) -> String {
@@ -523,6 +584,21 @@ fn inline_storage(nodes: &[&Node]) -> String {
                     "ac:image" => {
                         let f = attachment_filename(children).unwrap_or_default();
                         out.push_str(&format!("![]({})", f));
+                    }
+                    "ac:structured-macro" => {
+                        // Inline macros (status, date, …) keep their name and
+                        // parameters as a marker instead of vanishing.
+                        let macro_name = attr(attrs, "ac:name").unwrap_or("macro").to_uppercase();
+                        let params = macro_parameters(children)
+                            .iter()
+                            .map(|(key, value)| format!("{key}: {value}"))
+                            .collect::<Vec<_>>()
+                            .join(" · ");
+                        if params.is_empty() {
+                            out.push_str(&format!("[!{macro_name}]"));
+                        } else {
+                            out.push_str(&format!("[!{macro_name} — {params}]"));
+                        }
                     }
                     "ac:parameter" => {}
                     _ => out.push_str(&inline_storage(&kids)),
@@ -1203,6 +1279,63 @@ mod tests {
     fn structured_macro_to_blockquote() {
         let storage = "<ac:structured-macro ac:name=\"info\"><ac:rich-text-body><p>Be careful</p></ac:rich-text-body></ac:structured-macro>";
         assert_eq!(storage_to_markdown(storage), "> [!INFO]\n> Be careful\n");
+    }
+
+    #[test]
+    fn bodied_macro_does_not_leak_parameters() {
+        let storage = "<ac:structured-macro ac:name=\"expand\"><ac:parameter ac:name=\"title\">Details</ac:parameter><ac:rich-text-body><p>hidden body</p></ac:rich-text-body></ac:structured-macro>";
+        let md = storage_to_markdown(storage);
+        assert!(md.contains("> [!EXPAND]"));
+        assert!(md.contains("> hidden body"));
+        assert!(
+            !md.contains("Details"),
+            "parameter must not leak into the body: {md}"
+        );
+    }
+
+    #[test]
+    fn code_macro_becomes_a_fenced_block() {
+        let storage = "<ac:structured-macro ac:name=\"code\"><ac:parameter ac:name=\"language\">java</ac:parameter><ac:plain-text-body><![CDATA[System.out.println(1);\nreturn 0;]]></ac:plain-text-body></ac:structured-macro>";
+        assert_eq!(
+            storage_to_markdown(storage),
+            "```java\nSystem.out.println(1);\nreturn 0;\n```\n"
+        );
+    }
+
+    #[test]
+    fn plain_text_body_macro_falls_back_to_macro_name_as_language() {
+        let storage = "<ac:structured-macro ac:name=\"sql\"><ac:plain-text-body><![CDATA[select 1;]]></ac:plain-text-body></ac:structured-macro>";
+        assert_eq!(storage_to_markdown(storage), "```sql\nselect 1;\n```\n");
+    }
+
+    #[test]
+    fn unsupported_macro_is_marked_not_dropped() {
+        let storage = "<ac:structured-macro ac:name=\"toc\"/>";
+        let md = storage_to_markdown(storage);
+        assert!(md.contains("> [!TOC]"), "macro name kept: {md}");
+        assert!(
+            md.contains("변환되지 않는 Confluence 매크로"),
+            "unsupported notice: {md}"
+        );
+    }
+
+    #[test]
+    fn unsupported_macro_keeps_its_parameters() {
+        let storage = "<ac:structured-macro ac:name=\"children\"><ac:parameter ac:name=\"depth\">2</ac:parameter></ac:structured-macro>";
+        let md = storage_to_markdown(storage);
+        assert!(md.contains("> [!CHILDREN]"));
+        assert!(md.contains("depth: 2"), "parameter preserved: {md}");
+    }
+
+    #[test]
+    fn inline_macro_keeps_a_marker() {
+        let storage = "<p>Status: <ac:structured-macro ac:name=\"status\"><ac:parameter ac:name=\"title\">Done</ac:parameter></ac:structured-macro></p>";
+        let md = storage_to_markdown(storage);
+        assert!(md.contains("[!STATUS"), "inline macro keeps a marker: {md}");
+        assert!(
+            md.contains("title: Done"),
+            "inline macro keeps its parameter: {md}"
+        );
     }
 
     #[test]
