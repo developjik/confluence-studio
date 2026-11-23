@@ -28,7 +28,7 @@ chrono-tz = "0.10"
 uuid = { version = "1", features = ["v4", "serde"] }
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native"] }
 tokio-tungstenite = "0.30"
-quick-xml = "0.37"
+quick-xml = "0.42"
 sha2 = "0.11"
 hex = "0.4"
 parking_lot = "0.13"
