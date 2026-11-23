@@ -39,8 +39,8 @@ fn parse_nodes(storage: &str) -> Vec<Node> {
         let mut attrs = Vec::new();
         for a in e.attributes().flatten() {
             attrs.push((
-                String::from_utf8_lossy(a.key.as_ref()).into_owned(),
-                a.unescape_value()
+                a.key.as_ref().to_string(),
+                a.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                     .map(|v| v.into_owned())
                     .unwrap_or_default(),
             ));
@@ -51,11 +51,11 @@ fn parse_nodes(storage: &str) -> Vec<Node> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).into_owned();
+                let name = e.name().as_ref().to_string();
                 stack.push((name, attrs_of(&e), Vec::new()));
             }
             Ok(Event::Empty(e)) => {
-                let name = String::from_utf8_lossy(e.name().as_ref()).into_owned();
+                let name = e.name().as_ref().to_string();
                 let node = Node::Elem {
                     name,
                     attrs: attrs_of(&e),
@@ -74,11 +74,19 @@ fn parse_nodes(storage: &str) -> Vec<Node> {
                 }
             }
             Ok(Event::Text(t)) => {
-                let s = t.unescape().map(|c| c.into_owned()).unwrap_or_default();
+                let s = quick_xml::escape::unescape(&t).map(|c| c.into_owned()).unwrap_or_default();
+                push_node(&mut stack, &mut roots, Node::Text(s));
+            }
+            Ok(Event::GeneralRef(r)) => {
+                // 0.42는 엔티티 참조(`&amp;`, `&#38;`)를 Text에서 떼어 별도 이벤트로 준다.
+                let raw = format!("&{};", r.as_ref());
+                let s = quick_xml::escape::unescape(&raw)
+                    .map(|c| c.into_owned())
+                    .unwrap_or(raw);
                 push_node(&mut stack, &mut roots, Node::Text(s));
             }
             Ok(Event::CData(t)) => {
-                let s = String::from_utf8_lossy(t.as_ref()).into_owned();
+                let s = t.into_inner().into_owned();
                 push_node(&mut stack, &mut roots, Node::Text(s));
             }
             Ok(Event::Eof) => break,
