@@ -865,3 +865,83 @@ fn jobs_running_exports_registry_skip_and_cancel() {
     assert!(!registry.is_running("j1"), "가드 해제 시 슬롯 반납");
     assert!(registry.try_start("j1").is_some(), "해제 후 재시작 가능");
 }
+
+
+#[tokio::test]
+async fn jobs_export_failed_attachment_preserves_backup_and_state_then_recovers() {
+    let tmp = TempDir::new();
+    let mut job = make_job(tmp.path());
+    job.include_attachments = true;
+    assert!(job.export_options.cleanup_stale);
+    let mut source = MockSource {
+        pages: vec![PageData {
+            attachments: vec![AttachmentRef {
+                id: "att1".into(), title: "shot.png".into(),
+                media_type: "image/png".into(), download_url: String::new(),
+            }],
+            ..page("p1", "Home", &["Docs"], "<p>x</p>")
+        }],
+        attachments: HashMap::from([("att1".to_string(), b"ORIGINAL".to_vec())]),
+        ..MockSource::default()
+    };
+    let cancel = AtomicBool::new(false);
+    let first = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(first.status, RunStatus::Success);
+    let path = tmp.path().join("attachments/att1 - shot.png");
+    let state_path = tmp.path().join(".confluence-studio/state.json");
+    let read_state = || -> serde_json::Value {
+        serde_json::from_slice(&std::fs::read(&state_path).unwrap()).unwrap()
+    };
+    let prior = read_state();
+    let entry = prior["entries"]["attachments/att1 - shot.png"].clone();
+    assert!(entry.is_object());
+    source.fail_attachments = true;
+    let failed = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(failed.status, RunStatus::Failed);
+    assert!(failed.error.as_deref().unwrap().contains("shot.png"));
+    assert_eq!(failed.files_removed, 0);
+    assert_eq!(std::fs::read(&path).unwrap(), b"ORIGINAL");
+    assert_eq!(read_state()["entries"]["attachments/att1 - shot.png"], entry);
+    let history = list_runs(tmp.path());
+    assert_eq!(history.last().unwrap().status, RunStatus::Failed);
+    assert_eq!(history.last().unwrap().error, failed.error);
+
+    source.fail_attachments = false;
+    source.attachments.insert("att1".into(), b"UPDATED".to_vec());
+    let recovered = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(recovered.status, RunStatus::Success);
+    assert_eq!(recovered.attachments_written, 1);
+    assert_eq!(std::fs::read(&path).unwrap(), b"UPDATED");
+    assert_ne!(read_state()["entries"]["attachments/att1 - shot.png"]["hash"], entry["hash"]);
+
+    source.pages[0].attachments.clear();
+    let removed = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(removed.status, RunStatus::Success);
+    assert_eq!(removed.files_removed, 1);
+    assert!(!path.exists());
+    assert!(read_state()["entries"].get("attachments/att1 - shot.png").is_none());
+}
+
+#[tokio::test]
+async fn jobs_export_first_attachment_failure_is_failed_not_successful() {
+    let tmp = TempDir::new();
+    let mut job = make_job(tmp.path());
+    job.include_attachments = true;
+    let mut source = MockSource {
+        pages: vec![PageData {
+            attachments: vec![AttachmentRef {
+                id: "new".into(), title: "missing.bin".into(),
+                media_type: String::new(), download_url: String::new(),
+            }],
+            ..page("p1", "Home", &[], "<p>x</p>")
+        }],
+        fail_attachments: true,
+        ..MockSource::default()
+    };
+    let outcome = run_export(&job, &mut source, &mut no_progress(), &AtomicBool::new(false)).await;
+    assert_eq!(outcome.status, RunStatus::Failed);
+    assert_eq!(outcome.attachments_written, 0);
+    assert_eq!(outcome.files_removed, 0);
+    assert!(outcome.error.as_deref().unwrap().contains("missing.bin"));
+    assert_eq!(list_runs(tmp.path()).last().unwrap().status, RunStatus::Failed);
+}
