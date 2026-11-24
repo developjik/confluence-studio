@@ -25,3 +25,6 @@ dist-ssr
 
 # agent runtime state
 .gjc/
+
+# Standalone source-including converter tests
+/converter-tests/target/
