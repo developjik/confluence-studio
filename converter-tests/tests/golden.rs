@@ -1,0 +1,52 @@
+use converter_contract_tests::golden_convert;
+
+#[test]
+fn reviewed_storage_goldens() {
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("../fixtures/cases.json")).unwrap();
+    let cases = cases.as_array().unwrap();
+    assert!(cases.len() >= 20, "keep broad storage-format coverage");
+    let mut names = std::collections::HashSet::new();
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        assert!(names.insert(name), "duplicate fixture: {name}");
+        let storage = case["storage"].as_str().unwrap();
+        let expected = case["markdown"].as_str().unwrap();
+        assert_eq!(golden_convert(storage), expected, "fixture: {name}");
+        assert_eq!(
+            golden_convert(storage),
+            expected,
+            "repeat must be deterministic: {name}"
+        );
+    }
+}
+
+#[test]
+fn hostile_and_truncated_storage_is_bounded() {
+    // No network resolver exists in these converters. Includes are inert, not expanded.
+    for input in [
+        "<ac:structured-macro",
+        "<ac:structured-macro ac:name=\"include\"><ac:parameter>A</ac:parameter>",
+        "<ac:link><ri:page ri:content-title=\"B\"/>",
+        "<!DOCTYPE x [<!ENTITY x SYSTEM \"file:///does-not-exist\">]><p>&x;</p>",
+        "<p>\0</p>",
+    ] {
+        let first = golden_convert(input);
+        assert!(first.len() < 10_000);
+        assert_eq!(first, golden_convert(input));
+    }
+}
+
+#[test]
+fn reference_edges_and_includes_stay_inert() {
+    // Studio has no page context/resolver. Test each edge of A -> B -> A.
+    for target in ["B", "A"] {
+        let input = format!(
+            "<ac:link><ri:page ri:content-title=\"{target}\"/></ac:link><ac:structured-macro ac:name=\"include\"><ac:parameter>{target}</ac:parameter></ac:structured-macro>"
+        );
+        let expected = format!(
+            "{target}\n\n> [!INCLUDE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n"
+        );
+        assert_eq!(golden_convert(&input), expected);
+    }
+}

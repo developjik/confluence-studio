@@ -1,0 +1,12 @@
+[package]
+name = "converter-contract-tests"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+quick-xml = "0.42"
+
+serde_json = "1"
+
+[workspace]

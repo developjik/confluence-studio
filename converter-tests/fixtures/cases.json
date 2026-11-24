@@ -1,0 +1,162 @@
+[
+  {
+    "markdown": "# Title\n\n## Section\n\n###### Small\n",
+    "name": "headings",
+    "storage": "<h1>Title</h1><h2>Section</h2><h6>Small</h6>"
+  },
+  {
+    "markdown": "Hello **bold** *em* gone `` a`b `` & 한글.\n",
+    "name": "inline",
+    "storage": "<p>Hello <strong>bold</strong> <em>em</em> <del>gone</del> <code>a`b</code> &amp; 한글.</p>"
+  },
+  {
+    "markdown": "- One\n    - Nested\n- Two\n\n1. Third\n2. Fourth\n",
+    "name": "lists",
+    "storage": "<ul><li>One<ul><li>Nested</li></ul></li><li>Two</li></ul><ol start=\"3\"><li>Third</li><li>Fourth</li></ol>"
+  },
+  {
+    "markdown": "| A | B |\n| --- | --- |\n| x\\|y | line  \nnext |\n",
+    "name": "table",
+    "storage": "<table><tbody><tr><th>A</th><th style=\"text-align:right\">B</th></tr><tr><td>x|y</td><td>line<br/>next</td></tr></tbody></table>"
+  },
+  {
+    "markdown": "| A & B |  |\n| --- | --- |\n| X | Y |\n",
+    "name": "spans",
+    "storage": "<table><tr><th colspan=\"2\">A &amp; B</th></tr><tr><td rowspan=\"2\">X</td><td>Y</td></tr></table>"
+  },
+  {
+    "markdown": "````js\nconst x = `<ok>`;\n```\n````\n",
+    "name": "code",
+    "storage": "<ac:structured-macro ac:name=\"code\"><ac:parameter ac:name=\"language\">js</ac:parameter><ac:plain-text-body><![CDATA[const x = `<ok>`;\n```]]></ac:plain-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "```noformat\nraw <x>\ntext\n```\n",
+    "name": "noformat",
+    "storage": "<ac:structured-macro ac:name=\"noformat\"><ac:plain-text-body><![CDATA[raw <x>\ntext]]></ac:plain-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "> [!INFO]\n> Body info\n\n> [!NOTE]\n> Body note\n\n> [!WARNING]\n> Body warning\n\n> [!TIP]\n> Body tip\n\n> [!PANEL]\n> Body panel\n",
+    "name": "panels",
+    "storage": "<ac:structured-macro ac:name=\"info\"><ac:parameter ac:name=\"title\">Heading</ac:parameter><ac:rich-text-body><p>Body info</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"note\"><ac:parameter ac:name=\"title\">Heading</ac:parameter><ac:rich-text-body><p>Body note</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"warning\"><ac:parameter ac:name=\"title\">Heading</ac:parameter><ac:rich-text-body><p>Body warning</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"tip\"><ac:parameter ac:name=\"title\">Heading</ac:parameter><ac:rich-text-body><p>Body tip</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"panel\"><ac:parameter ac:name=\"title\">Heading</ac:parameter><ac:rich-text-body><p>Body panel</p></ac:rich-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "> [!EXPAND]\n> Details\n",
+    "name": "expand",
+    "storage": "<ac:structured-macro ac:name=\"expand\"><ac:parameter ac:name=\"title\">More &lt;now&gt;</ac:parameter><ac:rich-text-body><p>Details</p></ac:rich-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "completeDoneincompleteTodo\n",
+    "name": "tasks",
+    "storage": "<ac:task-list><ac:task><ac:task-status>complete</ac:task-status><ac:task-body>Done</ac:task-body></ac:task><ac:task><ac:task-status>incomplete</ac:task-status><ac:task-body>Todo</ac:task-body></ac:task></ac:task-list>"
+  },
+  {
+    "markdown": "> Quote\n>\n> Second\n\n```\nraw <x>\n```\n\n---\n",
+    "name": "quote-pre",
+    "storage": "<blockquote><p>Quote</p><p>Second</p></blockquote><pre>raw &lt;x&gt;</pre><hr/>"
+  },
+  {
+    "markdown": "[Link](https://example.invalid/a(b)) [Wiki](/spaces/S/pages/2) No target\n",
+    "name": "links",
+    "storage": "<p><a href=\"https://example.invalid/a(b)\">Link</a> <a href=\"/spaces/S/pages/2\">Wiki</a> <a>No target</a> <a href=\"https://example.invalid\"> </a></p>"
+  },
+  {
+    "markdown": "Other page\n",
+    "name": "page-links",
+    "storage": "<p><ac:link ac:anchor=\"part\"><ri:page ri:content-title=\"Other\" ri:space-key=\"S\"/><ac:plain-text-link-body><![CDATA[Other page]]></ac:plain-text-link-body></ac:link></p>"
+  },
+  {
+    "markdown": "Missing Jump\n",
+    "name": "missing-links",
+    "storage": "<p><ac:link><ri:page ri:content-title=\"Missing\"/></ac:link> <ac:link ac:anchor=\"local\"><ac:link-body>Jump</ac:link-body></ac:link></p>"
+  },
+  {
+    "markdown": "![](diagram.png)![External](https://example.invalid/image.png)\n",
+    "name": "images",
+    "storage": "<p><ac:image ac:alt=\"Diagram\"><ri:attachment ri:filename=\"diagram.png\"/></ac:image><img src=\"https://example.invalid/image.png\" alt=\"External\"/></p>"
+  },
+  {
+    "markdown": "Download\n",
+    "name": "attachment-link",
+    "storage": "<p><ac:link><ri:attachment ri:filename=\"diagram.png\"/><ac:plain-text-link-body>Download</ac:plain-text-link-body></ac:link></p>"
+  },
+  {
+    "markdown": "> [!PAGE-PROPERTIES]\n> | Owner | Team A |\n> | --- | --- |\n> | Status | Ready |\n",
+    "name": "properties",
+    "storage": "<ac:structured-macro ac:name=\"page-properties\"><ac:rich-text-body><table><tr><th>Owner</th><td>Team A</td></tr><tr><th>Status</th><td>Ready</td></tr></table></ac:rich-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "> [!CUSTOM]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n> key: value\n",
+    "name": "unknown-macro",
+    "storage": "<ac:structured-macro ac:name=\"custom\"><ac:parameter ac:name=\"key\">value</ac:parameter></ac:structured-macro>"
+  },
+  {
+    "markdown": "> [!CUSTOM]\n> Preserved body\n",
+    "name": "rich-unknown",
+    "storage": "<ac:structured-macro ac:name=\"custom\"><ac:rich-text-body><p>Preserved body</p></ac:rich-text-body></ac:structured-macro>"
+  },
+  {
+    "markdown": "Before\n",
+    "name": "malformed",
+    "storage": "<p>Before</p><ac:structured-macro ac:name=\"code\"><ac:plain-text-body><![CDATA[unfinished"
+  },
+  {
+    "markdown": "Self\n\n> [!INCLUDE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n",
+    "name": "cyclic-reference",
+    "storage": "<p><ac:link><ri:page ri:content-title=\"Self\" ri:space-key=\"S\"/><ac:link-body>Self</ac:link-body></ac:link></p><ac:structured-macro ac:name=\"include\"><ac:parameter ac:name=\"\">Self</ac:parameter></ac:structured-macro>"
+  },
+  {
+    "markdown": "<tag> \"quote\" & A &unknown;\n",
+    "name": "entities",
+    "storage": "<p>&lt;tag&gt; &quot;quote&quot; &#38; &#x41; &unknown;</p>"
+  },
+  {
+    "markdown": "\n\n```\n\n```\n",
+    "name": "empty",
+    "storage": "<p></p><h1></h1><blockquote></blockquote><pre></pre><table></table>"
+  },
+  {
+    "markdown": "Inside\n\nSpan under 2n  \nend\n",
+    "name": "transparent",
+    "storage": "<section><div><p>Inside</p></div></section><p><span>Span</span> <u>under</u> <sup>2</sup><sub>n</sub><br/>end</p>"
+  },
+  {
+    "markdown": "TermMeaningOnlyNextLoose\n",
+    "name": "definitions",
+    "storage": "<dl><dt>Term</dt><dd>Meaning</dd><dt>Only</dt><dt>Next</dt><dd></dd><dd>Loose</dd></dl>"
+  },
+  {
+    "markdown": "![A](https://example.invalid/a.png)Caption\n",
+    "name": "figure",
+    "storage": "<figure><img src=\"https://example.invalid/a.png\" alt=\"A\"/><figcaption>Caption</figcaption></figure>"
+  },
+  {
+    "markdown": "> [!STATUS]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n> title: Ready\n> colour: green\n\n> [!DATE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n> value: 2026-01-02\n\n> [!JIRA]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n> key: DEV-1\n> server: https://example.invalid\n",
+    "name": "status-date-jira",
+    "storage": "<ac:structured-macro ac:name=\"status\"><ac:parameter ac:name=\"title\">Ready</ac:parameter><ac:parameter ac:name=\"colour\">green</ac:parameter></ac:structured-macro><ac:structured-macro ac:name=\"date\"><ac:parameter ac:name=\"value\">2026-01-02</ac:parameter></ac:structured-macro><ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">DEV-1</ac:parameter><ac:parameter ac:name=\"server\">https://example.invalid</ac:parameter></ac:structured-macro>"
+  },
+  {
+    "markdown": "Attention\n\nWarn\n",
+    "name": "panel-div",
+    "storage": "<div class=\"confluence-information-macro confluence-information-macro-warning\"><p class=\"confluence-information-macro-heading\">Attention</p><p>Warn</p></div>"
+  },
+  {
+    "markdown": "Todayxhidden[spaced](a b)\n",
+    "name": "inline-extras",
+    "storage": "<p><time datetime=\"2026-01-02\"></time><time>Today</time><ri:user ri:username=\"tester\"/><ac:emoji ac:shortname=\":smile:\"/><code> </code><tt>x</tt><b> </b><ac:placeholder>hidden</ac:placeholder><a href=\"a b\">spaced</a></p>"
+  },
+  {
+    "markdown": "| A |  |\n| --- | --- |\n| B | C |\n",
+    "name": "ragged-table",
+    "storage": "<table><caption>Caption</caption><tr><td>A</td></tr><tr><td>B</td><td>C</td></tr></table>"
+  },
+  {
+    "markdown": "- ParentcompleteNestedTail\n",
+    "name": "nested-tasks",
+    "storage": "<ul><li><p>Parent</p><ac:task-list><ac:task><ac:task-status>complete</ac:task-status><ac:task-body>Nested</ac:task-body></ac:task></ac:task-list><p>Tail</p></li></ul>"
+  },
+  {
+    "markdown": "> [!CODE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!EXPAND]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!PAGE-PROPERTIES]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!TOC]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!JIRA]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!DATE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n\n> [!STATUS]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n",
+    "name": "macro-empty",
+    "storage": "<ac:structured-macro ac:name=\"code\"></ac:structured-macro><ac:structured-macro ac:name=\"expand\"></ac:structured-macro><ac:structured-macro ac:name=\"page-properties\"></ac:structured-macro><ac:structured-macro ac:name=\"toc\"></ac:structured-macro><ac:structured-macro ac:name=\"jira\"></ac:structured-macro><ac:structured-macro ac:name=\"date\"></ac:structured-macro><ac:structured-macro ac:name=\"status\"></ac:structured-macro>"
+  }
+]
