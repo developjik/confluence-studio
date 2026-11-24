@@ -38,13 +38,15 @@ fn hostile_and_truncated_storage_is_bounded() {
 }
 
 #[test]
-fn reciprocal_page_links_do_not_recurse() {
-    for title in ["Self", "Other"] {
+fn reference_edges_and_includes_stay_inert() {
+    // Studio has no page context/resolver. Test each edge of A -> B -> A.
+    for target in ["B", "A"] {
         let input = format!(
-            "<ac:link><ri:page ri:content-title=\"{title}\" ri:space-key=\"S\"/></ac:link><ac:structured-macro ac:name=\"include\"><ac:parameter>{title}</ac:parameter></ac:structured-macro>"
+            "<ac:link><ri:page ri:content-title=\"{target}\"/></ac:link><ac:structured-macro ac:name=\"include\"><ac:parameter>{target}</ac:parameter></ac:structured-macro>"
         );
-        let out = golden_convert(&input);
-        assert!(out.contains(title));
-        assert!(out.len() < 1_000);
+        let expected = format!(
+            "{target}\n\n> [!INCLUDE]\n> *변환되지 않는 Confluence 매크로입니다. 원본 페이지에서 확인하세요.*\n"
+        );
+        assert_eq!(golden_convert(&input), expected);
     }
 }
