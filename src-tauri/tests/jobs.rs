@@ -661,6 +661,62 @@ async fn jobs_export_skip_unchanged_on_second_run() {
 }
 
 #[tokio::test]
+async fn jobs_export_option_changes_rewrite_then_skip_in_both_directions() {
+    for front_matter in [true, false] {
+        let tmp = TempDir::new();
+        let mut job = make_job(tmp.path());
+        let mut source = MockSource {
+            pages: vec![page("p1", "Guide", &["Docs"], "<p>Body</p>")],
+            ..MockSource::default()
+        };
+        let cancel = AtomicBool::new(false);
+        let file = tmp.path().join("Docs/01 - Guide.md");
+        for enabled in [true, false, true] {
+            if front_matter {
+                job.export_options.front_matter = enabled;
+            } else {
+                job.export_options.page_breadcrumbs = enabled;
+            }
+            let changed = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+            assert_eq!(changed.status, RunStatus::Success);
+            assert_eq!(changed.pages_written, 1, "option change must rewrite");
+            let content = std::fs::read_to_string(&file).unwrap();
+            assert_eq!(content.starts_with("---\n"), job.export_options.front_matter);
+            assert_eq!(content.contains("> Docs\n"), job.export_options.page_breadcrumbs);
+            assert!(content.contains("Body"));
+            let repeated = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+            assert_eq!(repeated.status, RunStatus::Success);
+            assert_eq!(repeated.pages_written, 0);
+            assert_eq!(repeated.pages_skipped, 1);
+            assert_eq!(std::fs::read_to_string(&file).unwrap(), content);
+        }
+    }
+}
+
+#[tokio::test]
+async fn jobs_export_legacy_signature_rewrites_once() {
+    let tmp = TempDir::new();
+    let job = make_job(tmp.path());
+    let mut source = MockSource {
+        pages: vec![page("p1", "Guide", &["Docs"], "<p>Body</p>")],
+        ..MockSource::default()
+    };
+    let cancel = AtomicBool::new(false);
+    run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    let state_path = tmp.path().join(".confluence-studio/state.json");
+    let mut state: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    for entry in state["entries"].as_object_mut().unwrap().values_mut() {
+        entry["hash"] = serde_json::Value::String("legacy-signature".into());
+    }
+    std::fs::write(&state_path, serde_json::to_vec_pretty(&state).unwrap()).unwrap();
+    let upgraded = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(upgraded.pages_written, 1);
+    let repeated = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
+    assert_eq!(repeated.pages_written, 0);
+    assert_eq!(repeated.pages_skipped, 1);
+}
+
+#[tokio::test]
 async fn jobs_export_cleanup_stale_removes_deleted_pages() {
     let tmp = TempDir::new();
     let job = make_job(tmp.path());
