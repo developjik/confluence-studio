@@ -1,7 +1,7 @@
-"""Fail-closed regression tests for the coverage gate, no third-party packages."""
+"""Fail-closed coverage gate regression tests, standard library only."""
 from pathlib import Path
-import subprocess
 import json
+import subprocess
 import tempfile
 import unittest
 
@@ -9,7 +9,8 @@ SCRIPT = Path(__file__).with_name('check-converter-coverage.py').read_text()
 
 
 class CoverageGateTests(unittest.TestCase):
-    def check_report(self, report, expected):
+    def run_gate(self, counts, *, expected=False, truncate=False, missing=False,
+                 duplicate=False, totals_delta=0, remove_line=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / 'scripts').mkdir()
@@ -17,53 +18,42 @@ class CoverageGateTests(unittest.TestCase):
             script.write_text(SCRIPT)
             source = root / 'src-tauri/src/converter/mod.rs'
             source.parent.mkdir(parents=True)
-            source.write_text('fn first() {}\nfn second() {}\n#[cfg(test)]\nmod tests {}\n')
-            data = report.replace('SOURCE', str(source))
-            if expected and 'LF:' not in data:
-                data = data.replace('end_of_record', 'LF:2\nLH:2\nend_of_record')
+            source.write_text('fn a() {}\nfn b() {}\n#[cfg(test)]\n' + 'test line\n' * 9)
+            segments = []
+            for number, count in enumerate(counts, 1):
+                segments.extend([[number, 1, count, True, True, False],
+                                 [number + 1, 1, 0, False, False, False]])
+            summary = {'count': len(counts), 'covered': sum(c > 0 for c in counts)}
+            report = {'data':[{'files':[] if missing else [{'filename':str(source), 'segments':segments, 'summary':{'lines':summary}}]}]}
+            rows = [f'DA:{i},{c}' for i,c in enumerate(counts, 1)]
+            if remove_line:
+                rows.pop()
+            record = f'SF:{source}\n' + '\n'.join(rows) + f'\nLF:{len(counts)+totals_delta}\nLH:{summary["covered"]}\nend_of_record\n'
+            if truncate:
+                record = record.replace('end_of_record', '')
+            if duplicate:
+                record *= 2
             path = root / 'coverage.lcov'
-            path.write_text(data)
-            summary = root / 'coverage.json'
-            summary.write_text(json.dumps({'data':[{'files':[{'filename':str(source),'segments':[[1,1,1,True,True,False],[3,1,0,False,False,False]],'summary':{'lines':{'count':2,'covered':2}}}]}]}))
-            result = subprocess.run(['python3', str(script), str(path), str(summary)], capture_output=True, text=True)
+            path.write_text('' if missing else record)
+            data = root / 'coverage.json'
+            data.write_text(json.dumps(report))
+            result = subprocess.run(['python3',str(script),str(path),str(data)],capture_output=True,text=True)
             self.assertEqual(result.returncode == 0, expected, result.stdout + result.stderr)
 
-    def test_complete(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nDA:2,1\nend_of_record', True)
-
+    def test_complete(self): self.run_gate([1,1], expected=True)
+    def test_low(self): self.run_gate([1,0])
     def test_tests_do_not_inflate_production(self):
-        self.check_report('SF:SOURCE\nDA:1,0\nDA:2,0\nDA:3,100\nDA:4,100\nLF:4\nLH:2\nend_of_record', False)
-
-    def test_low(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nDA:2,0\nLF:2\nLH:1\nend_of_record', False)
-
-    def test_truncated(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nLF:1\nLH:1\n', False)
-
-    def test_inconsistent_totals(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nLF:2\nLH:2\nend_of_record', False)
-
-    def test_missing_totals(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nend_of_record', False)
-
-    def test_missing(self):
-        self.check_report('', False)
-
-    def test_empty(self):
-        self.check_report('SF:SOURCE\nend_of_record', False)
-
-    def test_duplicate_file(self):
-        self.check_report(('SF:SOURCE\nDA:1,1\nend_of_record\n') * 2, False)
-
-    def test_duplicate_line(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nDA:1,1\nend_of_record', False)
-
-    def test_invalid_line(self):
-        self.check_report('SF:SOURCE\nDA:0,1\nend_of_record', False)
-
-    def test_negative_hit(self):
-        self.check_report('SF:SOURCE\nDA:1,-1\nend_of_record', False)
+        # Including tests would pass 10/12=83.3%; excluding them must fail 0/2.
+        self.run_gate([0,0]+[1]*10)
+    def test_uncovered_tests_do_not_reduce_production(self):
+        self.run_gate([1,1]+[0]*10, expected=True)
+    def test_missing(self): self.run_gate([1,1],missing=True)
+    def test_empty(self): self.run_gate([])
+    def test_truncated(self): self.run_gate([1,1],truncate=True)
+    def test_duplicate(self): self.run_gate([1,1],duplicate=True)
+    def test_inconsistent_totals(self): self.run_gate([1,1],totals_delta=1)
+    def test_missing_da(self): self.run_gate([1,1],remove_line=True)
+    def test_negative_hit(self): self.run_gate([1,-1])
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()
