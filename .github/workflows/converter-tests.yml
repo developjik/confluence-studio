@@ -20,6 +20,8 @@ jobs:
         run: rustup toolchain install stable --profile minimal --component llvm-tools-preview
       - name: Install pinned coverage runner
         run: cargo +stable install cargo-llvm-cov --version 0.9.2 --locked
+      - name: Real LLVM region compatibility regression
+        run: python3 scripts/test-converter-llvm.py
       - name: Production converter tests with locked dependencies
         run: cargo +stable llvm-cov --manifest-path converter-tests/Cargo.toml --locked --lcov --output-path converter-coverage.lcov
       - name: Export matching LLVM summary
@@ -35,5 +37,6 @@ jobs:
           path: |
             converter-coverage.lcov
             converter-coverage.json
+            converter-llvm-evidence/
           if-no-files-found: error
           retention-days: 7
