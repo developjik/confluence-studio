@@ -48,6 +48,30 @@ path = "src-tauri/src/converter/mod.rs"
     subprocess.run(['cargo','+stable','llvm-cov','report','--json','--output-path','coverage.json'],cwd=root,env=env,check=True)
     for name in ['coverage.lcov', 'coverage.json']:
         shutil.copy(root / name, evidence / name)
+    shutil.copy(checker, evidence / 'check-converter-coverage.py')
+    (evidence / 'replay.py').write_text("""from pathlib import Path
+import json, subprocess, tempfile
+here = Path(__file__).resolve().parent
+with tempfile.TemporaryDirectory() as folder:
+    root = Path(folder)
+    target = root / 'src-tauri/src/converter/mod.rs'
+    target.parent.mkdir(parents=True)
+    target.write_bytes((here / 'fixture.rs').read_bytes())
+    (root / 'scripts').mkdir()
+    gate = root / 'scripts/check-converter-coverage.py'
+    gate.write_bytes((here / gate.name).read_bytes())
+    data = json.loads((here / 'coverage.json').read_text())
+    original = next(item['filename'] for run in data['data'] for item in run['files'] if item['filename'].endswith('/src-tauri/src/converter/mod.rs'))
+    # Preserve raw evidence; rewrite only temporary replay copies.
+    lcov = (here / 'coverage.lcov').read_text().replace(original, str(target))
+    (root / 'coverage.lcov').write_text(lcov)
+    for run in data['data']:
+        for item in run['files']:
+            if item['filename'] == original: item['filename'] = str(target)
+    (root / 'coverage.json').write_text(json.dumps(data))
+    subprocess.run(['python3', str(gate), str(root / 'coverage.lcov'), str(root / 'coverage.json')], check=True)
+""")
+    subprocess.run(['python3', str(evidence / 'replay.py')], check=True)
     # Explicit source-line oracle, independent of the format bridge.
     records = (root / 'coverage.lcov').read_text().split('end_of_record')
     record = next(record for record in records if str(source) in record)
