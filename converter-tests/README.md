@@ -7,7 +7,8 @@ cargo test --manifest-path converter-tests/Cargo.toml --locked
 cargo install cargo-llvm-cov --version 0.9.2 --locked
 rustup component add llvm-tools-preview
 cargo llvm-cov --manifest-path converter-tests/Cargo.toml --locked --lcov --output-path converter-coverage.lcov
-python3 scripts/check-converter-coverage.py converter-coverage.lcov
+cargo llvm-cov report --manifest-path converter-tests/Cargo.toml --json --output-path converter-coverage.json
+python3 scripts/check-converter-coverage.py converter-coverage.lcov converter-coverage.json
 ```
 
 ## Fixtures and review
@@ -22,6 +23,6 @@ Neither converter resolves includes recursively or fetches page content. Self/re
 
 ## Coverage gate
 
-The CI workflow runs on every pull request and default-branch push. LLVM LCOV must name every production converter `.rs` source, and **each file** must have at least 80% line coverage. Missing, duplicate, empty, or below-threshold reports fail. Imported error/model support modules are outside the converter scope. The gate excludes lines in trailing `#[cfg(test)]` modules, so test assertions cannot inflate production coverage. The current converter sources put those modules last; preserve that layout or update the gate when refactoring. This is a production line gate, not a branch-coverage claim. CI uploads the raw LCOV for 7 days.
+The CI workflow runs on every pull request and default-branch push. LLVM LCOV must name every production converter `.rs` source, and **each file** must have at least 80% line coverage. Missing, duplicate, empty, truncated, inconsistent LCOV/JSON totals, or below-threshold reports fail. Imported error/model support modules are outside the converter scope. The gate excludes lines in trailing `#[cfg(test)]` modules, so test assertions cannot inflate production coverage. The current converter sources put those modules last; preserve that layout or update the gate when refactoring. This is a production line gate, not a branch-coverage claim. CI uploads the raw LCOV and matching LLVM JSON for 7 days.
 
-The harness dependencies have their own committed `Cargo.lock`, because it is an independent workspace. A production dependency or source-layout change must update this harness as needed; compiling the actual sources makes API drift fail at compile time. Desktop/end-to-end behavior remains the responsibility of the main application's tests.
+The harness dependencies have their own committed `Cargo.lock`, because it is an independent workspace. CI checks every harness registry dependency against the desktop lock version/source/checksum. To refresh, copy `src-tauri/Cargo.lock` to `converter-tests/Cargo.lock` and run `cargo check --manifest-path converter-tests/Cargo.toml` to prune unrelated desktop packages. A production dependency or source-layout change must update this harness as needed; compiling the actual sources makes API drift fail at compile time. Desktop/end-to-end behavior remains the responsibility of the main application's tests.
