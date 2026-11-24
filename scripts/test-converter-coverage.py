@@ -1,6 +1,7 @@
 """Fail-closed regression tests for the coverage gate, no third-party packages."""
 from pathlib import Path
 import subprocess
+import json
 import tempfile
 import unittest
 
@@ -18,19 +19,32 @@ class CoverageGateTests(unittest.TestCase):
             source.parent.mkdir(parents=True)
             source.write_text('fn first() {}\nfn second() {}\n#[cfg(test)]\nmod tests {}\n')
             data = report.replace('SOURCE', str(source))
+            if expected and 'LF:' not in data:
+                data = data.replace('end_of_record', 'LF:2\nLH:2\nend_of_record')
             path = root / 'coverage.lcov'
             path.write_text(data)
-            result = subprocess.run(['python3', str(script), str(path)], capture_output=True, text=True)
+            summary = root / 'coverage.json'
+            summary.write_text(json.dumps({'data':[{'files':[{'filename':str(source),'segments':[[1,1,1,True,True,False],[3,1,0,False,False,False]],'summary':{'lines':{'count':2,'covered':2}}}]}]}))
+            result = subprocess.run(['python3', str(script), str(path), str(summary)], capture_output=True, text=True)
             self.assertEqual(result.returncode == 0, expected, result.stdout + result.stderr)
 
     def test_complete(self):
         self.check_report('SF:SOURCE\nDA:1,1\nDA:2,1\nend_of_record', True)
 
     def test_tests_do_not_inflate_production(self):
-        self.check_report('SF:SOURCE\nDA:1,0\nDA:2,0\nDA:3,100\nDA:4,100\nend_of_record', False)
+        self.check_report('SF:SOURCE\nDA:1,0\nDA:2,0\nDA:3,100\nDA:4,100\nLF:4\nLH:2\nend_of_record', False)
 
     def test_low(self):
-        self.check_report('SF:SOURCE\nDA:1,1\nDA:2,0\nend_of_record', False)
+        self.check_report('SF:SOURCE\nDA:1,1\nDA:2,0\nLF:2\nLH:1\nend_of_record', False)
+
+    def test_truncated(self):
+        self.check_report('SF:SOURCE\nDA:1,1\nLF:1\nLH:1\n', False)
+
+    def test_inconsistent_totals(self):
+        self.check_report('SF:SOURCE\nDA:1,1\nLF:2\nLH:2\nend_of_record', False)
+
+    def test_missing_totals(self):
+        self.check_report('SF:SOURCE\nDA:1,1\nend_of_record', False)
 
     def test_missing(self):
         self.check_report('', False)
