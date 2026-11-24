@@ -472,14 +472,18 @@ pub async fn run_export(
                 let att_abs = target.join(&att_rel);
                 let bytes = match source.fetch_attachment(att) {
                     Ok(bytes) => bytes,
-                    // A single failing attachment does not fail the export.
+                    // An incomplete export must not prune prior backups or
+                    // replace their tracking state. A failed outcome also
+                    // keeps the skipped download visible in run history.
                     Err(err) => {
+                        status = RunStatus::Failed;
+                        error = Some(format!("첨부 다운로드 실패 ({}): {err}", att.title));
                         progress(ExportProgress {
-                            message: format!("첨부 {} 건너뜀: {err}", att.title),
+                            message: format!("첨부 {} 다운로드 실패, 기존 백업 보존: {err}", att.title),
                             done: index as u32 + 1,
                             total,
                         });
-                        continue;
+                        break;
                     }
                 };
                 let hash = sha256_hex(&bytes);
