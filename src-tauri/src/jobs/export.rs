@@ -216,8 +216,12 @@ fn sha256_hex(data: &[u8]) -> String {
 /// rendered file *except* the run-varying `exported_at` timestamp, so that
 /// skip_unchanged can detect unchanged pages across runs. (The exported_at
 /// in an on-disk file therefore reflects the run that last wrote it.)
-fn page_signature(page: &PageData, markdown: &str) -> String {
-    let mut signature = String::new();
+fn page_signature(job: &Job, page: &PageData, markdown: &str) -> String {
+    // Version the signature to safely invalidate states created before options
+    // were included. Do not include the run-varying exported_at timestamp.
+    let mut signature = String::from("page-v2\0");
+    signature.push_str(if job.export_options.front_matter { "front-matter:1\0" } else { "front-matter:0\0" });
+    signature.push_str(if job.export_options.page_breadcrumbs { "breadcrumbs:1\0" } else { "breadcrumbs:0\0" });
     signature.push_str(&page.id);
     signature.push('\u{0}');
     signature.push_str(&page.title);
@@ -427,7 +431,7 @@ pub async fn run_export(
 
         let markdown = storage_to_markdown(&page.storage);
         let content = render_page_file(job, page, &markdown, started_at);
-        let hash = page_signature(page, &markdown);
+        let hash = page_signature(job, page, &markdown);
 
         let unchanged = job.export_options.skip_unchanged
             && prior_state
