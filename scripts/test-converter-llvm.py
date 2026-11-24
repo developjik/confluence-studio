@@ -65,6 +65,9 @@ with tempfile.TemporaryDirectory() as folder:
     # Preserve raw evidence; rewrite only temporary replay copies.
     lcov = (here / 'coverage.lcov').read_text().replace(original, str(target))
     (root / 'coverage.lcov').write_text(lcov)
+    fixture_record = next(record for record in lcov.split('end_of_record') if str(target) in record)
+    hits = {int(line[3:].split(',')[0]):int(line.split(',')[1]) for line in fixture_record.splitlines() if line.startswith('DA:')}
+    assert all(hits.get(line,0)>0 for line in [1,2,3,4,5,6,8,10,11]), hits
     for run in data['data']:
         for item in run['files']:
             if item['filename'] == original: item['filename'] = str(target)
