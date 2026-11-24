@@ -681,8 +681,14 @@ async fn jobs_export_option_changes_rewrite_then_skip_in_both_directions() {
             assert_eq!(changed.status, RunStatus::Success);
             assert_eq!(changed.pages_written, 1, "option change must rewrite");
             let content = std::fs::read_to_string(&file).unwrap();
-            assert_eq!(content.starts_with("---\n"), job.export_options.front_matter);
-            assert_eq!(content.contains("> Docs\n"), job.export_options.page_breadcrumbs);
+            assert_eq!(
+                content.starts_with("---\n"),
+                job.export_options.front_matter
+            );
+            assert_eq!(
+                content.contains("> Docs\n"),
+                job.export_options.page_breadcrumbs
+            );
             assert!(content.contains("Body"));
             let repeated = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
             assert_eq!(repeated.status, RunStatus::Success);
@@ -704,12 +710,16 @@ async fn jobs_export_legacy_signature_rewrites_once() {
     let cancel = AtomicBool::new(false);
     run_export(&job, &mut source, &mut no_progress(), &cancel).await;
     let state_path = tmp.path().join(".confluence-studio/state.json");
-    let mut state: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    let mut state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
     for entry in state["entries"].as_object_mut().unwrap().values_mut() {
         use sha2::{Digest, Sha256};
         // Exact field order and NUL separators used before the v2 signature.
         let legacy = "p1\0Guide\07\0https://example.atlassian.net/wiki/p1\0Docs\0Body\n";
-        entry["hash"] = serde_json::Value::String(hex::encode(Sha256::digest(legacy.as_bytes())));
+        entry["hash"] = serde_json::Value::String(format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(legacy.as_bytes()))
+        ));
     }
     std::fs::write(&state_path, serde_json::to_vec_pretty(&state).unwrap()).unwrap();
     let file = tmp.path().join("Docs/01 - Guide.md");
@@ -719,8 +729,15 @@ async fn jobs_export_legacy_signature_rewrites_once() {
     let backup_root = tmp.path().join(".confluence-studio/migration-backups");
     let backups: Vec<_> = std::fs::read_dir(&backup_root).unwrap().collect();
     assert_eq!(backups.len(), 1);
-    let backup = backups[0].as_ref().unwrap().path().join("Docs/01 - Guide.md");
-    assert_eq!(std::fs::read_to_string(backup).unwrap(), "local edit to preserve");
+    let backup = backups[0]
+        .as_ref()
+        .unwrap()
+        .path()
+        .join("Docs/01 - Guide.md");
+    assert_eq!(
+        std::fs::read_to_string(backup).unwrap(),
+        "local edit to preserve"
+    );
     let repeated = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
     assert_eq!(repeated.pages_written, 0);
     assert_eq!(repeated.pages_skipped, 1);
@@ -732,20 +749,31 @@ async fn jobs_export_legacy_backup_failure_keeps_local_file() {
     use sha2::{Digest, Sha256};
     let tmp = TempDir::new();
     let job = make_job(tmp.path());
-    let mut source = MockSource { pages: vec![page("p1", "Guide", &["Docs"], "<p>Body</p>")], ..MockSource::default() };
+    let mut source = MockSource {
+        pages: vec![page("p1", "Guide", &["Docs"], "<p>Body</p>")],
+        ..MockSource::default()
+    };
     let cancel = AtomicBool::new(false);
     run_export(&job, &mut source, &mut no_progress(), &cancel).await;
     let state_path = tmp.path().join(".confluence-studio/state.json");
-    let mut state: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    let mut state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
     let legacy = "p1\0Guide\07\0https://example.atlassian.net/wiki/p1\0Docs\0Body\n";
     for entry in state["entries"].as_object_mut().unwrap().values_mut() {
-        entry["hash"] = serde_json::Value::String(hex::encode(Sha256::digest(legacy.as_bytes())));
+        entry["hash"] = serde_json::Value::String(format!(
+            "sha256:{}",
+            hex::encode(Sha256::digest(legacy.as_bytes()))
+        ));
     }
     std::fs::write(&state_path, serde_json::to_vec(&state).unwrap()).unwrap();
     let file = tmp.path().join("Docs/01 - Guide.md");
     std::fs::write(&file, "local edit").unwrap();
     // A regular file blocks creation of the backup directory.
-    std::fs::write(tmp.path().join(".confluence-studio/migration-backups"), "blocked").unwrap();
+    std::fs::write(
+        tmp.path().join(".confluence-studio/migration-backups"),
+        "blocked",
+    )
+    .unwrap();
     let result = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
     assert_eq!(result.status, RunStatus::Failed);
     assert_eq!(result.pages_written, 0);
@@ -756,9 +784,17 @@ async fn jobs_export_legacy_backup_failure_keeps_local_file() {
 async fn jobs_export_root_ignores_breadcrumb_option() {
     let tmp = TempDir::new();
     let mut job = make_job(tmp.path());
-    let mut source = MockSource { pages: vec![page("root", "Root", &[], "<p>Body</p>")], ..MockSource::default() };
+    let mut source = MockSource {
+        pages: vec![page("root", "Root", &[], "<p>Body</p>")],
+        ..MockSource::default()
+    };
     let cancel = AtomicBool::new(false);
-    assert_eq!(run_export(&job, &mut source, &mut no_progress(), &cancel).await.pages_written, 1);
+    assert_eq!(
+        run_export(&job, &mut source, &mut no_progress(), &cancel)
+            .await
+            .pages_written,
+        1
+    );
     job.export_options.page_breadcrumbs = !job.export_options.page_breadcrumbs;
     let next = run_export(&job, &mut source, &mut no_progress(), &cancel).await;
     assert_eq!(next.pages_written, 0);
