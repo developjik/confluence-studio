@@ -218,9 +218,19 @@ fn sha256_hex(data: &[u8]) -> String {
 /// in an on-disk file therefore reflects the run that last wrote it.)
 fn page_signature(job: &Job, page: &PageData, markdown: &str) -> String {
     let mut signature = String::from("page-v2\0");
-    signature.push_str(if job.export_options.front_matter { "front-matter:1\0" } else { "front-matter:0\0" });
+    signature.push_str(if job.export_options.front_matter {
+        "front-matter:1\0"
+    } else {
+        "front-matter:0\0"
+    });
     // A root page never renders breadcrumbs, so this option cannot change it.
-    signature.push_str(if job.export_options.page_breadcrumbs && !page.parent_title_path.is_empty() { "breadcrumbs:1\0" } else { "breadcrumbs:0\0" });
+    signature.push_str(
+        if job.export_options.page_breadcrumbs && !page.parent_title_path.is_empty() {
+            "breadcrumbs:1\0"
+        } else {
+            "breadcrumbs:0\0"
+        },
+    );
     signature.push_str(&legacy_page_signature(page, markdown));
     format!("v2:{}", sha256_hex(signature.as_bytes()))
 }
@@ -452,11 +462,17 @@ pub async fn run_export(
             // Legacy state did not record output options. Keep the existing file
             // before the first v2 rewrite, including any local edits. Never prune
             // these migration backups; a failed backup must stop the overwrite.
-            if prior_state.entries.get(&rel).is_some_and(|e| {
-                e.hash == legacy_page_signature(page, &markdown)
-            }) && tokio::fs::try_exists(&abs).await.unwrap_or(false) {
-                let backup = target.join(STATE_DIR_NAME).join("migration-backups")
-                    .join(uuid::Uuid::new_v4().to_string()).join(&rel);
+            if prior_state
+                .entries
+                .get(&rel)
+                .is_some_and(|e| e.hash == legacy_page_signature(page, &markdown))
+                && tokio::fs::try_exists(&abs).await.unwrap_or(false)
+            {
+                let backup = target
+                    .join(STATE_DIR_NAME)
+                    .join("migration-backups")
+                    .join(uuid::Uuid::new_v4().to_string())
+                    .join(&rel);
                 let backup_result = match tokio::fs::read(&abs).await {
                     Ok(bytes) => fs_util::atomic_write_bytes_async(&backup, bytes).await,
                     Err(err) => Err(err),
@@ -507,7 +523,10 @@ pub async fn run_export(
                         status = RunStatus::Failed;
                         error = Some(format!("첨부 다운로드 실패 ({}): {err}", att.title));
                         progress(ExportProgress {
-                            message: format!("첨부 {} 다운로드 실패, 기존 백업 보존: {err}", att.title),
+                            message: format!(
+                                "첨부 {} 다운로드 실패, 기존 백업 보존: {err}",
+                                att.title
+                            ),
                             done: index as u32 + 1,
                             total,
                         });
@@ -618,4 +637,4 @@ async fn finish_export(
     })
     .await;
     outcome
-    }
+}
