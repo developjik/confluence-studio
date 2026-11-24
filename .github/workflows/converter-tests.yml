@@ -1,0 +1,31 @@
+name: converter contracts
+on:
+  push:
+    branches: [master]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: converter-contracts-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  converter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Rust and LLVM instrumentation
+        run: rustup toolchain install stable --profile minimal --component llvm-tools-preview
+      - name: Install pinned coverage runner
+        run: cargo +stable install cargo-llvm-cov --version 0.9.2 --locked
+      - name: Production converter tests with locked dependencies
+        run: cargo +stable llvm-cov --manifest-path converter-tests/Cargo.toml --locked --lcov --output-path converter-coverage.lcov
+      - name: Enforce 80 percent on every converter source
+        run: python3 scripts/check-converter-coverage.py converter-coverage.lcov
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: converter-line-coverage
+          path: converter-coverage.lcov
+          if-no-files-found: error
+          retention-days: 7
