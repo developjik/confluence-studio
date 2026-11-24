@@ -21,9 +21,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# tauri-action creates/updates the release and uploads assets with this token.
+# Default to read-only. The bundle job alone uploads release assets.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -37,7 +37,7 @@ jobs:
     name: version check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # The bundle version comes from src-tauri/tauri.conf.json, not from the
       # tag. A tag that disagrees would publish 0.1.0 files under v0.2.0.
@@ -53,6 +53,8 @@ jobs:
           fi
 
   bundle:
+    permissions:
+      contents: write
     name: bundle (${{ matrix.label }})
     needs: preflight
     strategy:
@@ -71,24 +73,24 @@ jobs:
             args: ''
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: pnpm
 
       - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           # Only macOS cross-compiles; empty on Windows.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri -> target
           key: ${{ matrix.label }}
@@ -100,7 +102,7 @@ jobs:
       # dist/ exists before the Rust side embeds ../dist.
       - name: build bundles and create draft release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -122,7 +124,7 @@ jobs:
 
       - name: build bundles only (manual run)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
